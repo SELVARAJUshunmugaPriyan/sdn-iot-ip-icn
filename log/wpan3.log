@@ -1,6 +1,0 @@
-Traceback (most recent call last):
-  File "/home/priyan/code/sdn-iot-ip-icn/Init_icn_wpan_indv_nds.py", line 102, in <module>
-    fwdr.processRcpTxn()
-  File "/home/priyan/code/sdn-iot-ip-icn/Init_icn_wpan_indv_nds.py", line 41, in processRcpTxn
-    self.sktHdlr.bind(('wpan{}'.format(argv[1]), 0, PACKET_BROADCAST))
-OSError: [Errno 19] No such device
