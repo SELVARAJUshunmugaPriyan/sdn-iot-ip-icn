@@ -6,48 +6,39 @@ rmmod ieee802154_6lowpan
 rmmod ieee802154
 modprobe mac802154_hwsim
 
-n=`echo $1'*'$1 | bc`
-
-for i in `seq 0 $n`
+for i in `seq 0 4`
 do
 	wpan-hwsim add
 done
 
 # BUILD TOPOLOGY
-for i in `seq 0 $n`
+for i in `seq 0 4`
 do
-	if [ $i == 0 ]
+	if [ "$i" == 0 ]
 	then
-		eval "wpan-hwsim edge add "$i' '`expr $i + 1`
-	    eval "wpan-hwsim edge add "`expr $i + 1`' '$i
-	else
-		if [ `expr "$i" % $1` != 0 ]
-		then
-			# East
-			echo $i"East"
 			eval "wpan-hwsim edge add "$i' '`expr $i + 1`
-		    eval "wpan-hwsim edge add "`expr $i + 1`' '$i
-		fi
-		if [ `expr "$i" % $1` != 0 -a $i -lt `expr $n - $1 + 1` ]
+	        eval "wpan-hwsim edge add " `expr $i + 1`' '$i
+	else
+		if [ "$i" == 1 ]
 		then
-			# SouthEast
-			echo $i"SouthEast"
-			eval "wpan-hwsim edge add "$i' '`expr $i + $1 + 1`
-		    eval "wpan-hwsim edge add "`expr $i + $1 + 1`' '$i
+			eval "wpan-hwsim edge add "$i' '`expr $i + 1`
+	        eval "wpan-hwsim edge add " `expr $i + 1`' '$i
+	        eval "wpan-hwsim edge add "$i' '`expr $i + 2`
+	        eval "wpan-hwsim edge add " `expr $i + 2`' '$i
+	        eval "wpan-hwsim edge add "$i' '`expr $i + 3`
+	        eval "wpan-hwsim edge add " `expr $i + 3`' '$i
 		fi
-		if [ $i -lt `expr $n - $1 + 1` ]
+		if [ "$i" == 2 ]
 		then
-			# South
-			echo $i"South"
-			eval "wpan-hwsim edge add "$i' '`expr $i + $1`
-		    eval "wpan-hwsim edge add "`expr $i + $1`' '$i
+			eval "wpan-hwsim edge add "$i' '`expr $i + 1`
+	        eval "wpan-hwsim edge add " `expr $i + 1`' '$i
+	        eval "wpan-hwsim edge add "$i' '`expr $i + 2`
+	        eval "wpan-hwsim edge add " `expr $i + 2`' '$i
 		fi
-		if [ `expr "$i" % $1` != 1 -a $i -lt `expr $n - $1 + 1` ]
+		if [ "$i" == 3 ]
 		then
-			# SouthWest
-			echo $i"SouthWest"
-			eval "wpan-hwsim edge add "$i' '`expr $i + $1 - 1`
-		    eval "wpan-hwsim edge add "`expr $i + $1 - 1`' '$i
+			eval "wpan-hwsim edge add "$i' '`expr $i + 1`
+	        eval "wpan-hwsim edge add " `expr $i + 1`' '$i
 		fi
 	fi
 
