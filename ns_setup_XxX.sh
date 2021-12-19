@@ -24,28 +24,24 @@ do
 		if [ `expr "$i" % $1` != 0 ]
 		then
 			# East
-			echo $i"East"
 			eval "wpan-hwsim edge add "$i' '`expr $i + 1`
 		    eval "wpan-hwsim edge add "`expr $i + 1`' '$i
 		fi
 		if [ `expr "$i" % $1` != 0 -a $i -lt `expr $n - $1 + 1` ]
 		then
 			# SouthEast
-			echo $i"SouthEast"
 			eval "wpan-hwsim edge add "$i' '`expr $i + $1 + 1`
 		    eval "wpan-hwsim edge add "`expr $i + $1 + 1`' '$i
 		fi
 		if [ $i -lt `expr $n - $1 + 1` ]
 		then
 			# South
-			echo $i"South"
 			eval "wpan-hwsim edge add "$i' '`expr $i + $1`
 		    eval "wpan-hwsim edge add "`expr $i + $1`' '$i
 		fi
 		if [ `expr "$i" % $1` != 1 -a $i -lt `expr $n - $1 + 1` ]
 		then
 			# SouthWest
-			echo $i"SouthWest"
 			eval "wpan-hwsim edge add "$i' '`expr $i + $1 - 1`
 		    eval "wpan-hwsim edge add "`expr $i + $1 - 1`' '$i
 		fi

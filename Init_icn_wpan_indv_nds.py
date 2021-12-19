@@ -17,6 +17,8 @@ cache = {
     }
 }
 
+# key : value
+
 #def recv_callback() :
 #    pass
 class IcnForwarder :
@@ -48,7 +50,7 @@ class IcnForwarder :
                 # Root node
                 self.nodeRnk = 1
                 self.pktBffr += bytes(str(self.nodeRnk) + ':', 'utf8')
-                cache['ctr']['rnk']['brd'] = 1
+                cache['ctr']['rnk']['brd'] = 3
 
             while True :
                 logging.debug(cache)
@@ -69,18 +71,20 @@ class IcnForwarder :
                             logging.debug('[PKT] : {} {}'.format(attr, val)) # Debug takes only str as argument
 
                             if 'rnk' in attr :
-                                if int(val) < self.nodeRnk :
+                                if (2 * int(val)) < self.nodeRnk :
                                     self.nodeRnk = 2 * int(val)
                                     logging.info('[SETG][RNK] : my rank is {}'.format(self.nodeRnk))
-                                    cache['ctr']['rnk']['brd'] = 1
-                                else :
-                                    cache['ctr']['rnk']['brd'] = 0
+                                    cache['ctr']['rnk']['brd'] = 3 # We're going to introduce ttl-like 
+                                                                   # concept
+                                #else :
+                                    #cache['ctr']['rnk']['brd'] = 0
                             # if there is a topic in the msg
                             #cache[tmp_hld[i].split('/')[0]][tmp_hld[i].split('/')[1]] = int(tmp_hld[i + 1])
                 
                 if cache['ctr']['rnk']['brd'] :
                     Tbytes = self.sktHdlr.send(self.pktBffr + bytes(str(self.nodeRnk) + ':', 'utf8'))
                     logging.info('[SENT][PKT] : Total sent {} bytes'.format(Tbytes))
+                    cache['ctr']['rnk']['brd'] -= 1
 
                 sleep(1)
 
