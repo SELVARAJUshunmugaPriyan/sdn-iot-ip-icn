@@ -6,21 +6,6 @@ from math       import ceil
 from time       import sleep
 import logging
 
-# Temporary cache storage with limited capability of python dict
-cache = {
-    'ctr': {
-        'rcv': 1,
-        'rnk': {
-            'brd': 0
-        },
-        'pri': []
-    }
-}
-
-# key : value
-
-#def recv_callback() :
-#    pass
 class IcnForwarder :
 
     def __init__(self, flowType='ctrl')  :
@@ -30,6 +15,18 @@ class IcnForwarder :
         self.rcvdPkt = None
         if flowType == 'ctrl' :
             self.nodeRnk = 255 # by defining inside a if block, we can control the declaration and definition of data memebers in class
+        # Temporary cache storage with limited capability of python dict
+        self.cache = {
+                'ctr': {
+                    'rcv': 1,
+                    'rnk': {
+                        'brd': 0
+                    },
+                    'pri': []
+                }
+            }
+        self.topic = None
+        # key : value
 
     def __macAddressGetter (self) :
         with open('/sys/class/net/wpan{}/address'.format(argv[1]), 'r') as f :
@@ -44,18 +41,21 @@ class IcnForwarder :
             self.sktHdlr.setblocking(0)
             
             IcnForwarder.__macAddressGetter(self)
+            logging.debug('[MAC][ADRS] : {}'.format(self.macAdrs))
+            self.topic = self.macAdrs[-1:]
+            logging.debug('[TPC][SELF] : {}'.format(bytes(self.topic)))
             self.pktBffr += self.macAdrs + bytes(':rnk:', 'utf8')
 
             if argv[1] == '0' and self.nodeRnk == 255 :
                 # Root node
                 self.nodeRnk = 1
                 self.pktBffr += bytes(str(self.nodeRnk) + ':', 'utf8')
-                cache['ctr']['rnk']['brd'] = 3
+                self.cache['ctr']['rnk']['brd'] = 3
 
             while True :
-                logging.debug(cache)
+                logging.debug(self.cache)
                 self.rcvdPkt = None
-                if cache['ctr']['rcv'] :
+                if self.cache['ctr']['rcv'] :
                     try:
                         self.rcvdPkt = self.sktHdlr.recvfrom(123)
                         logging.info('[RCVD][PKT] : {}'.format(self.rcvdPkt))
@@ -74,17 +74,17 @@ class IcnForwarder :
                                 if (2 * int(val)) < self.nodeRnk :
                                     self.nodeRnk = 2 * int(val)
                                     logging.info('[SETG][RNK] : my rank is {}'.format(self.nodeRnk))
-                                    cache['ctr']['rnk']['brd'] = 3 # We're going to introduce ttl-like 
+                                    self.cache['ctr']['rnk']['brd'] = 3 # We're going to introduce ttl-like 
                                                                    # concept
                                 #else :
                                     #cache['ctr']['rnk']['brd'] = 0
                             # if there is a topic in the msg
                             #cache[tmp_hld[i].split('/')[0]][tmp_hld[i].split('/')[1]] = int(tmp_hld[i + 1])
                 
-                if cache['ctr']['rnk']['brd'] :
+                if self.cache['ctr']['rnk']['brd'] :
                     Tbytes = self.sktHdlr.send(self.pktBffr + bytes(str(self.nodeRnk) + ':', 'utf8'))
                     logging.info('[SENT][PKT] : Total sent {} bytes'.format(Tbytes))
-                    cache['ctr']['rnk']['brd'] -= 1
+                    self.cache['ctr']['rnk']['brd'] -= 1
 
                 sleep(1)
 
