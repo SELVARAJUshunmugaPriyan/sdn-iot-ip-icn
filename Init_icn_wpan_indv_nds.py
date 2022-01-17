@@ -36,6 +36,11 @@ class IcnForwarder :
         sr = ''
         for i in dic.keys():
             try:
+                if int(dic[i]['r']) < self.nodeRnk :
+                    continue
+            except (TypeError, KeyError):
+                pass
+            try:
                 if int(i) < 10 :
                     sr += '0' + i
                 else :
@@ -53,7 +58,7 @@ class IcnForwarder :
                     self.macAdrs[:-1].split(':')) # This should be ':' since MAC address is delimited by ':' only
 
     def processRcpTxn (self):
-        _refLenCachePav = self.cache['pav'].__len__()
+        _refLenCachePav = str(self.cache['pav']).__len__()
         with socket(AF_PACKET, SOCK_RAW, ntohs(0x0003)) as self.sktHdlr :
             self.sktHdlr.bind(('wpan{}'.format(argv[1]), 0, PACKET_BROADCAST))
             self.sktHdlr.setblocking(0)
@@ -97,13 +102,13 @@ class IcnForwarder :
 
                             if 'rnk' in attr :
                                 # Rank setter
-                                if (2 * int(val)) < self.nodeRnk :
+                                if int(val) < self.nodeRnk :
                                     self.nodeRnk = 2 * int(val)
                                     logging.info('[SETG][RNK] : my rank is {}'.format(self.nodeRnk))
-                                    
+                                    self.cache['pav'][str(self.rcvdPkt[1][-1][0])] = dict(r=val)
                                     self.cache['ctr']['rnk']['brd'] = 3 # We're going to introduce ttl-like concept
                                 # Receive down nodes' ranks                                   
-                                elif int(val) > self.nodeRnk :
+                                elif int(val) >= self.nodeRnk :
                                     logging.warning('[RECV][RNK] : node {} rank {}'.format(self.rcvdPkt[1][-1][0], val))
                                     
                                     self.cache['pav'][str(self.rcvdPkt[1][-1][0])] = dict(r=val)
@@ -115,13 +120,16 @@ class IcnForwarder :
                             # Map down nodes ranks
                             if 'pav' in attr :
                                 logging.info('[RECV][PAV] : node {} lowerRank {}'.format(self.rcvdPkt[1][-1][0], val))
-                                
                                 try:
-                                    self.cache['pav'][str(self.rcvdPkt[1][-1][0])]['d'] = val
+                                    if int(self.cache['pav'][str(self.rcvdPkt[1][-1][0])]['r']) <= self.nodeRnk :
+                                        continue
+                                except (KeyError, TypeError):
+                                    pass
+                                try:
+                                    self.cache['pav'][str(self.rcvdPkt[1][-1][0])]['d'] = val + 'D'
                                 except KeyError:
-                                    self.cache['pav'][str(self.rcvdPkt[1][-1][0])] = dict(d=val)
+                                    self.cache['pav'][str(self.rcvdPkt[1][-1][0])] = dict(d=(val+'D'))
                                 logging.warning('[CACHE][PAV] : {}'.format(self.cache['pav']))
-
                             # if there is a topic in the msg
                             #cache[_tmp_hld[i].split('/')[0]][_tmp_hld[i].split('/')[1]] = int(_tmp_hld[i + 1])
                 # If broadcast is allowed, send
@@ -139,12 +147,14 @@ class IcnForwarder :
                     univClk = 300
                 logging.debug('self.cache[\'pav\'].__len__() {} _refLenCachePav {} univClk {}'.format(self.cache['pav'].__len__(), _refLenCachePav, self.univClk))
 
-                if self.cache['pav'].__len__() != _refLenCachePav and not self.univClk % 3 :
-                    _refLenCachePav = self.cache['pav'].__len__()
+                if str(self.cache['pav']).__len__() != _refLenCachePav and not self.univClk % 3 :
+                    _refLenCachePav = str(self.cache['pav']).__len__()
                     logging.debug(self.cache['pav'])
-                    Tbytes = self.sktHdlr.send(self.pktBffr + self.macAdrs + b'>pav>' + bytes(self.__dictToSerial(self.cache['pav']), 'utf8') + b'>') # Don't remove '>' it causes Index error in line 74
-                    logging.info('[SENT][PKT] : Total sent {} bytes'.format(Tbytes))
-
+                    try:
+                        Tbytes = self.sktHdlr.send(self.pktBffr + self.macAdrs + b'>pav>' + bytes(self.__dictToSerial(self.cache['pav']), 'utf8') + b'>') # Don't remove '>' it causes Index error in line 74
+                        logging.info('[SENT][PKT] : Total sent {} bytes'.format(Tbytes))
+                    except OSError:
+                        logging.debug(self.__dictToSerial(self.cache['pav']))
 
 if __name__ == "__main__" :
     # Create logging
@@ -152,7 +162,7 @@ if __name__ == "__main__" :
             filename='/home/priyan/code/sdn-iot-ip-icn/log/wpan{}.log'.
                 format(argv[1]),
             filemode='a',
-            level=logging.INFO,
+            level=logging.WARNING,
             format=("%(asctime)s-%(levelname)s-%(filename)s-%(lineno)d "
             "%(message)s"),
             datefmt='%d/%m/%Y %H:%M:%S'
@@ -162,3 +172,38 @@ if __name__ == "__main__" :
     # deal with control and data packets separately
     fwdr = IcnForwarder()
     fwdr.processRcpTxn()
+
+s = '02r4d03r806r804r405r4D04r405r4d07r808r809r803r806r802r404r408r8d06r807r809r8DD'
+
+def networkMapper (strng):
+
+    d = {}
+    downRouteFlag = False
+    i = 0
+    startNode = ''
+
+    if not isinstance(strng, str):
+        raise TypeError
+    while i < s.__len__():
+        if s[i] == '0' :
+            if s[i+2] == 'r' :
+                #print("{} d {}".format(i, d))
+                try:
+                    d[s[i+1]]['r'] = s[i+3]
+                except KeyError:
+                    d[s[i+1]] = dict(r=s[i+3], v='')
+                if downRouteFlag :
+                    d[s[i+1]]['v'] += startNode
+            i += 3
+        elif s[i] == 'd':
+            downRouteFlag = True
+            startNode += s[i-3] + ','
+            #print(startNode)
+        elif s[i] == 'D':
+            downRouteFlag = False
+            startNode = ' '
+        i += 1
+
+    return d
+
+print(networkMapper(s))
