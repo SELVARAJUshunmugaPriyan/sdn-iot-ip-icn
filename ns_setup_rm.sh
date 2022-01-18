@@ -16,3 +16,7 @@ then
 fi
 
 rmmod mac802154_hwsim
+
+# KILLING CONTROLLER
+#ip link del tunnel_start
+pkill controller.py
