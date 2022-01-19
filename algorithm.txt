@@ -1,0 +1,5 @@
+At time 0, all nodes will only be receiving and only the controller will initiate the broadcasting process initially with its neighbouring nodes by sending init_msg (contains rank = 1; topic = controller/topic)
+At time t, the first neighbouring nodes which received the init_msg from the controller will double the rank & store it and proceeds to broadcast its own init_msg (contains own rank = 2x; topic = node/topic)
+** in the current setup, nodes initially receive higher rank due to network congestion, but once they receive a smaller rank they change it
+** To limit the medium usage, a ttl-like concept has been introduced
+Also at time t, if a node receives an init_msg with higher rank than itself, it will cease broadcasting << internally, meaning a layer-2 route has been formed already, so it will discontinue the broadcast of it own rank to avoid unnecessary transmission >>. By also, it will also relay the init_msg with higher rank, arriving from the nodes below itself in the routing graph, towards the controller with its own topic. By this, we are creating an init_msg with a chain of upward route of nodes' topics. 
