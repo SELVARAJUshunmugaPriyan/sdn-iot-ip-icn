@@ -69,5 +69,5 @@ do
 	#ip netns exec wpan$i ip link add link wpan$i name lowpan$i type lowpan
 	#ip netns exec wpan$i ip link set wpan$i up
 	#ip netns exec wpan$i ip link set lowpan$i up 
-	ip netns exec wpan$i /home/priyan/code/sdn-iot-ip-icn/node.py $i &>>/home/priyan/code/sdn-iot-ip-icn/log/wpan$i.log &
+	ip netns exec wpan$i /home/priyan/code/sdn-iot-ip-icn/node_v*.py $i &>>/home/priyan/code/sdn-iot-ip-icn/log/wpan$i.log &
 done

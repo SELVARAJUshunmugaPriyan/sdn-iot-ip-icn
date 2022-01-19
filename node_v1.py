@@ -4,17 +4,21 @@ from sys        import argv
 from binascii   import unhexlify
 from math       import ceil
 from time       import sleep
+from threading  import Lock, Thread
 import logging
-import _thread
 
 SDN_CONTROLLER_ADDRESS = '10.0.254.1' 
 SDN_CONTROLLER_PORT = 14323
 TICK_TIME = 1
 
-class priCmmnForwarder :
-    def __init__(self, nodeNum=argv[1], macAdrs=None, macRwsk=None, pktBffr=b'\x41\xc8\x93\xff\xff\xff\xff', rcvdPkt=None, nodeType='ccn') :    
-        self.macAdrs = macAdrs      # Node's MAC address
+lock = Lock()
+
+class priCtrlPlaneUnit(Thread):
+    def __init__(self, macRwsk, macAdrs=None, pktBffr=b'\x41\xc8\x93\xff\xff\xff\xff', rcvdPkt=None, nodeNum=argv[1], nodeType='ccn') :
+        # Call the Thread class's init function
+        Thread.__init__(self) 
         self.macRwsk = macRwsk      # Node's MAC RAW socket
+        self.macAdrs = macAdrs      # Node's MAC address
         self.pktBffr = pktBffr      # Node's packet buffer
         self.rcvdPkt = rcvdPkt      # Received packet buffer
         self.rootCon = None         # Root node's connection towards controller
@@ -36,7 +40,13 @@ class priCmmnForwarder :
                 'pav': {} # Dict of lower rank nodes
             }
         # Reference variable for length of cache 'pav'
-        self.lenCachePav = str(self.cache['pav']).__len__() 
+        self.lenCachePav = str(self.cache['pav']).__len__()
+        self.__macAddressGetter()
+        logging.debug('[MAC][ADRS] : {}'.format(self.macAdrs))
+            
+        self.topic = self.macAdrs[-1:]
+        logging.debug('[TPC][SELF] : {}'.format(bytes(self.topic)))
+        return
 
     def __dictToSerial(self, dic):
         if not isinstance(dic, dict) :
@@ -65,15 +75,13 @@ class priCmmnForwarder :
                 unhexlify(x) for x in 
                     self.macAdrs[:-1].split(':')) # This should be ':' since MAC address is delimited by ':' only
 
-    def _rootConnTwdCntrllr(self):
-        pass
-
     def _recvProcess(self):
         self.rcvdPkt = None
         if self.cache['ctr']['rcv'] :
             # Recieve packets
             try:
-                self.rcvdPkt = self.macRwsk.recvfrom(123)
+                with lock:
+                    self.rcvdPkt = self.macRwsk.recvfrom(123)
                 logging.info('[RCVD][PKT] : {}'.format(self.rcvdPkt))
             
             except BlockingIOError:
@@ -117,7 +125,8 @@ class priCmmnForwarder :
                 logging.debug('[CACHE][PAV] : {}'.format(self.cache['pav']))
                                     
     def _broadcastProcess(self, sendBuffer):
-        Tbytes = self.macRwsk.send(sendBuffer + bytes(str(self.nodeRnk) + '>', 'utf8'))
+        with lock:
+            Tbytes = self.macRwsk.send(sendBuffer + bytes(str(self.nodeRnk) + '>', 'utf8'))
         logging.info('[SENT][PKT] : Total sent {} bytes'.format(Tbytes))
         
         self.cache['ctr']['rnk']['brd'] -= 1
@@ -126,7 +135,8 @@ class priCmmnForwarder :
         logging.debug('self.cache[\'pav\'].__len__() {} refLenCachePav {} univClk {}'.format(self.cache['pav'].__len__(), self.lenCachePav, self.univClk))
 
         try:
-            Tbytes = self.macRwsk.send(self.pktBffr + self.macAdrs + b'>pav>' + bytes(self.__dictToSerial(self.cache['pav']), 'utf8') + b'>') # Don't remove '>' it causes Index error in line 74
+            with lock:
+                Tbytes = self.macRwsk.send(self.pktBffr + self.macAdrs + b'>pav>' + bytes(self.__dictToSerial(self.cache['pav']), 'utf8') + b'>') # Don't remove '>' it causes Index error in line 74
             logging.info('[SENT][PKT] : Total sent {} bytes'.format(Tbytes))
 
             # Sending the network map towards controller
@@ -136,18 +146,7 @@ class priCmmnForwarder :
         except OSError:
             logging.debug(self.__dictToSerial(self.cache['pav']))
 
-    def nodeInitilization(self):
-        self.macRwsk = socket(AF_PACKET, SOCK_RAW, ntohs(0x0003))
-        self.macRwsk.bind(('wpan{}'.format(self.nodeNum), 0, PACKET_BROADCAST))
-        self.macRwsk.setblocking(0)
-        self.__macAddressGetter()
-        logging.debug('[MAC][ADRS] : {}'.format(self.macAdrs))
-            
-        self.topic = self.macAdrs[-1:]
-        logging.debug('[TPC][SELF] : {}'.format(bytes(self.topic)))
-        return
-
-    def nodeProcess(self, TICK_TIME=1):
+    def run(self):
         sendBuffer = self.pktBffr + self.macAdrs + bytes('>rnk>', 'utf8')
         # Root node
         if not self.nodeNum and self.nodeRnk == 254 :
@@ -179,11 +178,13 @@ class priCmmnForwarder :
 
                     self._broadcastNetMap()
         finally:
-            # Closing all the sockets
+            # Closing rootCon socket
             self.rootCon.close()
-            self.macRwsk.close()
 
-
+class priDataPlaneUnit(Thread):
+    def __init__(self):
+        Thread.__init__(self)
+        
 if __name__ == "__main__" :
     # Create logging
     logging.basicConfig(
@@ -195,9 +196,23 @@ if __name__ == "__main__" :
             "%(message)s"),
             datefmt='%d/%m/%Y %H:%M:%S'
         )
+    # Creating a common layer 2 socket between control and data plane
+    try:
+        l2_sock = socket(AF_PACKET, SOCK_RAW, ntohs(0x0003))
+        l2_sock.bind(('wpan{}'.format(argv[1]), 0, PACKET_BROADCAST)) # argv[1] is the node ID number
+        l2_sock.setblocking(0)
 
-    # we've created a class because in future we may have two separate sockets to
-    # deal with control and data packets separately
-    node = priCmmnForwarder()
-    node.nodeInitilization()
-    node.nodeProcess(TICK_TIME)
+        # we've created a class because in future we may have two separate sockets to
+        # deal with control and data packets separately
+        ctlPlnThrd = priCtrlPlaneUnit(l2_sock)
+        ctlPlnThrd.start()
+
+        # print some logs in main thread
+        for i in range(50):
+            logging.warning('Hi pavikutty')
+            sleep(1)
+        # wait for thread to finish
+        ctlPlnThrd.join()
+
+    finally:
+        l2_sock.close()
