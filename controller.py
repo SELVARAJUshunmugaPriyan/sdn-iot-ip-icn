@@ -22,10 +22,12 @@ class PavSdnCntrlr() :
             if strng[index] == '0' :
                 if strng[index+2] == 'r' :
                     logging.debug("[NMPPR][FUNC] {} networkMapUpd {}".format(index, networkMapUpd))
+
+                    rank = strng[index+3:index+5] if strng[index+4] not in ('D', 'd', '0') else strng[index+3] # If rank is in two digits and this is why its helpful in keep ranks in power of 2's since it will not end with '0'
                     try:
-                        networkMapUpd[strng[index+1]]['r'] = strng[index+3]
+                        networkMapUpd[strng[index+1]]['r'] = rank
                     except KeyError:
-                        networkMapUpd[strng[index+1]] = dict(r=strng[index+3], v='')
+                        networkMapUpd[strng[index+1]] = dict(r=rank, v='')
                     if downRouteFlag :
                         if startNode not in networkMapUpd[strng[index+1]]['v'] :
                             networkMapUpd[strng[index+1]]['v'] += ' ' + startNode
@@ -34,6 +36,7 @@ class PavSdnCntrlr() :
                 downRouteFlag = True
                 startNode += strng[index-3] + ','
                 logging.debug("[NMPPR][FUNC] startNode {}".format(startNode))
+
             elif strng[index] == 'D':
                 downRouteFlag = False
                 startNode = ' '
@@ -50,10 +53,13 @@ class PavSdnCntrlr() :
                 self.networkMap[i] = dict(r=networkMapUpd[i]['r'])
             via = networkMapUpd[i]['v']
             via = [ [ y for y in x.split(',') if y ] for x in via.split(' ') if x ]
-            logging.debug('Before', i, ' ', networkMapUpd[i]['r'], ' ', via)
+            logging.debug('Before: i {} networkMapUpd[i][\'r\'] {} via {}'.format(i, networkMapUpd[i]['r'], via))
+
             j = via.__len__()
             while j :
                 j -= 1
+                logging.debug("via[j] {} via[j][0] {} networkMapUpd[via[j][0]] {}".format(via[j], via[j][0], networkMapUpd[via[j][0]]))
+
                 if networkMapUpd[via[j][0]]['r'] != '2' or i in via[j] :
                     via.remove(via[j])
             try:
@@ -62,7 +68,8 @@ class PavSdnCntrlr() :
                     self.networkMap[i]['v'].append(x) 
             except KeyError :
                 self.networkMap[i]['v'] = via
-            logging.debug('After ',i, ' ', self.networkMap[i]['r'], ' ', via, '\n')
+            logging.debug('After: i {} networkMapUpd[i][\'r\'] {} via {}'.format(i, networkMapUpd[i]['r'], via))
+            
         # self.networkMap[i]['v'] = list of tuples after cleaning organised by number of hops. This is the function that can be improved to accommodate ML techniques
 
     def _threaded(self, conn):

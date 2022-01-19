@@ -9,6 +9,7 @@ import _thread
 
 SDN_CONTROLLER_ADDRESS = '10.0.254.1' 
 SDN_CONTROLLER_PORT = 14323
+TICK_TIME = 1
 
 class priCmmnForwarder :
     def __init__(self, nodeNum=argv[1], macAdrs=None, macRwsk=None, pktBffr=b'\x41\xc8\x93\xff\xff\xff\xff', rcvdPkt=None, nodeType='ccn') :    
@@ -146,7 +147,7 @@ class priCmmnForwarder :
         logging.debug('[TPC][SELF] : {}'.format(bytes(self.topic)))
         return
 
-    def nodeProcess(self):
+    def nodeProcess(self, TICK_TIME=1):
         sendBuffer = self.pktBffr + self.macAdrs + bytes('>rnk>', 'utf8')
         # Root node
         if not self.nodeNum and self.nodeRnk == 254 :
@@ -154,6 +155,7 @@ class priCmmnForwarder :
             sendBuffer += bytes(str(self.nodeRnk) + '>', 'utf8')
             self.cache['ctr']['rnk']['brd'] = 3
             self.rootCon = socket()
+            self.rootCon.settimeout(15)
             self.rootCon.connect((SDN_CONTROLLER_ADDRESS, SDN_CONTROLLER_PORT))
         # Node Process Begins
         try: 
@@ -167,15 +169,15 @@ class priCmmnForwarder :
                 # If broadcast is allowed, send
                 if self.cache['ctr']['rnk']['brd'] :
                     self._broadcastProcess(sendBuffer)
+                sleep(TICK_TIME)
+                self.univClk -= 1
+                if not self.univClk :
+                    self.univClk = 254
                 if str(self.cache['pav']).__len__() != self.lenCachePav and not self.univClk % 3 :
                     self.lenCachePav = str(self.cache['pav']).__len__()
                     logging.debug(self.cache['pav'])
 
                     self._broadcastNetMap()
-                sleep(1)
-                self.univClk -= 1
-                if not self.univClk :
-                    self.univClk = 254
         finally:
             # Closing all the sockets
             self.rootCon.close()
@@ -198,4 +200,4 @@ if __name__ == "__main__" :
     # deal with control and data packets separately
     node = priCmmnForwarder()
     node.nodeInitilization()
-    node.nodeProcess()
+    node.nodeProcess(TICK_TIME)

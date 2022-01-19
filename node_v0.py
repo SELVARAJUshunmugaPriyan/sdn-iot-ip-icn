@@ -177,7 +177,7 @@ if __name__ == "__main__" :
             filename='/home/priyan/code/sdn-iot-ip-icn/log/wpan{}.log'.
                 format(argv[1]),
             filemode='a',
-            level=logging.WARNING,
+            level=logging.INFO,
             format=("%(asctime)s-%(levelname)s-%(filename)s-%(lineno)d "
             "%(message)s"),
             datefmt='%d/%m/%Y %H:%M:%S'
