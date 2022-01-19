@@ -3,99 +3,91 @@ from socket     import *
 from time       import sleep
 import logging
 import _thread
-import threading
-  
-print_lock = threading.Lock()
+
+SDN_CONTROLLER_ADDRESS = '10.0.254.1' 
+SDN_CONTROLLER_PORT = 14323
 
 class PavSdnCntrlr() :
-    def __init__(self) :
-        pass
+    def __init__(self, networkMap=None) :
+        self.networkMap = networkMap if networkMap else {}
 
-    def networkMapper (strng):
-        dic = {}
+    def _networkMapper (self, strng):
+        networkMapUpd = {}
         downRouteFlag = False
-        i = 0
+        index = 0
         startNode = ''
         if not isinstance(strng, str):
             raise TypeError
-        while i < strng.__len__():
-            if strng[i] == '0' :
-                if strng[i+2] == 'r' :
-                    logging.debug("[NMPPR][FUNC] {} dic {}".format(i, dic))
+        while index < strng.__len__():
+            if strng[index] == '0' :
+                if strng[index+2] == 'r' :
+                    logging.debug("[NMPPR][FUNC] {} networkMapUpd {}".format(index, networkMapUpd))
                     try:
-                        dic[strng[i+1]]['r'] = strng[i+3]
+                        networkMapUpd[strng[index+1]]['r'] = strng[index+3]
                     except KeyError:
-                        dic[strng[i+1]] = dict(r=strng[i+3], v='')
+                        networkMapUpd[strng[index+1]] = dict(r=strng[index+3], v='')
                     if downRouteFlag :
-                        dic[strng[i+1]]['v'] += startNode
-                i += 3
-            elif strng[i] == 'd':
+                        if startNode not in networkMapUpd[strng[index+1]]['v'] :
+                            networkMapUpd[strng[index+1]]['v'] += ' ' + startNode
+                index += 3
+            elif strng[index] == 'd':
                 downRouteFlag = True
-                startNode += strng[i-3] + ','
+                startNode += strng[index-3] + ','
                 logging.debug("[NMPPR][FUNC] startNode {}".format(startNode))
-            elif strng[i] == 'D':
+            elif strng[index] == 'D':
                 downRouteFlag = False
                 startNode = ' '
-            i += 1
-        return dic
+            index += 1
+        return networkMapUpd
 
-
-def __networkMapper (self, strng):
-    dic = {}
-    downRouteFlag = False
-    i = 0
-    startNode = ''
-    if not isinstance(strng, str):
-        raise TypeError
-    while i < strng.__len__():
-        if strng[i] == '0' :
-            if strng[i+2] == 'r' :
-                logging.debug("[NMPPR][FUNC] {} dic {}".format(i, dic))
-                try:
-                    dic[strng[i+1]]['r'] = strng[i+3]
-                except KeyError:
-                    dic[strng[i+1]] = dict(r=strng[i+3], v='')
-                if downRouteFlag :
-                    dic[strng[i+1]]['v'] += startNode
-            i += 3
-        elif strng[i] == 'd':
-            downRouteFlag = True
-            startNode += strng[i-3] + ','
-            logging.debug("[NMPPR][FUNC] startNode {}".format(startNode))
-        elif strng[i] == 'D':
-            downRouteFlag = False
-            startNode = ' '
-        i += 1
-    return dic
-
-def threaded(c):
-    c.setblocking(0)
-    #print_lock.release()
-    try:
-        while True:
+    # Redundant function can be improved after cleaning the network_map sent towards controller
+    # till then this function must be used to periodically clean the network_map dictionary.
+    def _routeManager(self, networkMapUpd):
+        for i in networkMapUpd.keys() :
             try:
-                data = c.recv(1024)
-                if data :
-                    logging.info(data)           
-            except BlockingIOError:
-                pass
-    finally:
-        c.close()
+                self.networkMap[i]['r'] =  networkMapUpd[i]['r']
+            except KeyError :
+                self.networkMap[i] = dict(r=networkMapUpd[i]['r'])
+            via = networkMapUpd[i]['v']
+            via = [ [ y for y in x.split(',') if y ] for x in via.split(' ') if x ]
+            logging.debug('Before', i, ' ', networkMapUpd[i]['r'], ' ', via)
+            j = via.__len__()
+            while j :
+                j -= 1
+                if networkMapUpd[via[j][0]]['r'] != '2' or i in via[j] :
+                    via.remove(via[j])
+            try:
+                gen = (x for x in via if x not in self.networkMap[i]['v'])
+                for x in gen :
+                    self.networkMap[i]['v'].append(x) 
+            except KeyError :
+                self.networkMap[i]['v'] = via
+            logging.debug('After ',i, ' ', self.networkMap[i]['r'], ' ', via, '\n')
+        # self.networkMap[i]['v'] = list of tuples after cleaning organised by number of hops. This is the function that can be improved to accommodate ML techniques
+
+    def _threaded(self, conn):
+        conn.setblocking(0)
+        try:
+            while True:
+                try:
+                    self._routeManager(self._networkMapper(str(conn.recv(1024))))
+                    logging.info(self.networkMap)          
+                except BlockingIOError:
+                    pass
+        finally:
+            conn.close()
   
-def Main():
-    host = ''
-    port = 5001
-    with socket() as s :
-        s.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
-        s.bind((host, port))
-        logging.info("socket binded to port", port)
-        s.listen(5)
-        logging.info("socket is listening")
-        while True:
-            c, addr = s.accept()
-            #print_lock.acquire()
-            logging.info('Connected to :', addr[0], ':', addr[1])
-            _thread.start_new_thread(threaded, (c,))
+    def ServerProcess(self):
+        with socket() as sck :
+            sck.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
+            sck.bind((SDN_CONTROLLER_ADDRESS, SDN_CONTROLLER_PORT))
+            logging.info("socket binded to port", SDN_CONTROLLER_PORT)
+            sck.listen(5)
+            logging.info("socket is listening")
+            while True:
+                client, addr = sck.accept()
+                logging.info('Connected to :', addr[0], ':', addr[1])
+                _thread.start_new_thread(self._threaded, (client,))
     
 if __name__ == "__main__" :
     # Create logging
@@ -107,4 +99,5 @@ if __name__ == "__main__" :
             "%(message)s"),
             datefmt='%d/%m/%Y %H:%M:%S'
         )
-    Main()
+    icnCtlr = PavSdnCntrlr()
+    icnCtlr.ServerProcess()

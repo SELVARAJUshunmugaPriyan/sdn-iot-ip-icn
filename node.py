@@ -8,7 +8,7 @@ import logging
 import _thread
 
 SDN_CONTROLLER_ADDRESS = '10.0.254.1' 
-SDN_CONTROLLER_PORT = 5001
+SDN_CONTROLLER_PORT = 14323
 
 class priCmmnForwarder :
     def __init__(self, nodeNum=argv[1], macAdrs=None, sktHdlr=None, pktBffr=b'\x41\xc8\x93\xff\xff\xff\xff', rcvdPkt=None, nodeType='ccn') :    
