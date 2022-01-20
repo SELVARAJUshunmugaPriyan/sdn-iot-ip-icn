@@ -85,7 +85,7 @@ class PavSdnCntrlr() :
             conn.close()
   
     def ServerProcess(self):
-        with socket() as sck :
+        with socket(AF_INET, SOCK_STREAM, 0) as sck :
             sck.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
             sck.bind((SDN_CONTROLLER_ADDRESS, SDN_CONTROLLER_PORT))
             logging.info("socket binded to port", SDN_CONTROLLER_PORT)

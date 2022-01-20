@@ -1,5 +1,19 @@
 #!/bin/bash
 
+if [ "$EUID" -ne 0 ]
+	then echo "ERROR: REQUIRED Run as root user"
+	exit
+fi
+
+if [ -z "$1" ]
+	then echo "ERROR: REQUIRED No value for X in X x X grid network"
+	exit
+fi
+
+if [ -z "$2" ]
+	then echo "MISSING: OPTIONAL value for number of communicating nodes"
+fi
+
 rmmod mac802154_hwsim
 rmmod mac802154
 rmmod ieee802154_6lowpan
@@ -9,19 +23,16 @@ modprobe mac802154_hwsim
 n=`echo $1'*'$1 | bc`
 
 for i in `seq 0 $n`
-do
-	wpan-hwsim add
+	do	wpan-hwsim add
 done
 
 # BUILD TOPOLOGY
 for i in `seq 0 $n`
-do
-	# CONFIGURE NETWORK NAMESPACE
+	do	# CONFIGURE NETWORK NAMESPACE
 	ip netns add wpan$i
 	
 	if [ $i == 0 ]
-	then
-		eval "wpan-hwsim edge add "$i' '`expr $i + 1`
+		then eval "wpan-hwsim edge add "$i' '`expr $i + 1`
 	    eval "wpan-hwsim edge add "`expr $i + 1`' '$i
 		# CONFIGURE VIRTUAL LINK TOWARDS SDN CONTROLLER
 		ip link add tunnel_start type veth peer name tunnel_end
@@ -34,26 +45,22 @@ do
 		/home/priyan/code/sdn-iot-ip-icn/controller.py &>>/home/priyan/code/sdn-iot-ip-icn/log/controller.log &
 	else
 		if [ `expr "$i" % $1` != 0 ]
-		then
-			# East
+			then # East
 			eval "wpan-hwsim edge add "$i' '`expr $i + 1`
 		    eval "wpan-hwsim edge add "`expr $i + 1`' '$i
 		fi
 		if [ `expr "$i" % $1` != 0 -a $i -lt `expr $n - $1 + 1` ]
-		then
-			# SouthEast
+			then # SouthEast
 			eval "wpan-hwsim edge add "$i' '`expr $i + $1 + 1`
 		    eval "wpan-hwsim edge add "`expr $i + $1 + 1`' '$i
 		fi
 		if [ $i -lt `expr $n - $1 + 1` ]
-		then
-			# South
+			then # South
 			eval "wpan-hwsim edge add "$i' '`expr $i + $1`
 		    eval "wpan-hwsim edge add "`expr $i + $1`' '$i
 		fi
 		if [ `expr "$i" % $1` != 1 -a $i -lt `expr $n - $1 + 1` ]
-		then
-			# SouthWest
+			then # SouthWest
 			eval "wpan-hwsim edge add "$i' '`expr $i + $1 - 1`
 		    eval "wpan-hwsim edge add "`expr $i + $1 - 1`' '$i
 		fi
@@ -68,6 +75,22 @@ do
 	ip netns exec wpan$i ip link set dev wpan$i up
 	#ip netns exec wpan$i ip link add link wpan$i name lowpan$i type lowpan
 	#ip netns exec wpan$i ip link set wpan$i up
-	#ip netns exec wpan$i ip link set lowpan$i up 
+	#ip netns exec wpan$i ip link set lowpan$i up
+
+	# STARTING THE NODE PYTHON PROCESS
+	# Generating a list of communicating nodes
+    # _commNodesLst = None
+    # if argv[2] :
+    #     _numOfNodes = _nodeNum
+    #     _numOfNodes *= _numOfNodes
+    #     _numOfCommNodes = int(argv[2])
+    #     _commNodesLst = []
+    #     while _numOfCommNodes:
+    #         _numOfCommNodes -= 1
+    #         _tempVar = int(round(random() * _numOfNodes))
+    #         if _tempVar and _tempVar not in _commNodesLst :
+    #             _commNodesLst.append(_tempVar)
+    #         else :
+    #             _numOfCommNodes += 1
 	ip netns exec wpan$i /home/priyan/code/sdn-iot-ip-icn/node_v*.py $i &>>/home/priyan/code/sdn-iot-ip-icn/log/wpan$i.log &
 done
