@@ -1,11 +1,14 @@
 #!/usr/bin/python3
 from socket     import *
 from time       import sleep
+from threading  import Lock
 import logging
 import _thread
 
 SDN_CONTROLLER_ADDRESS = '10.0.254.1' 
 SDN_CONTROLLER_PORT = 14323
+
+lock = Lock()
 
 class PavSdnCntrlr() :
     def __init__(self, networkMap=None) :
@@ -77,8 +80,13 @@ class PavSdnCntrlr() :
         try:
             while True:
                 try:
-                    self._routeManager(self._networkMapper(str(conn.recv(1024))))
-                    logging.info(self.networkMap)          
+                    data = str(conn.recv(1024))
+                    if 'con_req' in data :
+                        logging.warning(data)
+                    else :
+                        self._routeManager(self._networkMapper(data))
+                    logging.warning(self.networkMap)
+                    
                 except BlockingIOError:
                     pass
         finally:
@@ -94,6 +102,7 @@ class PavSdnCntrlr() :
             while True:
                 client, addr = sck.accept()
                 logging.info('Connected to :', addr[0], ':', addr[1])
+                _thread.start_new_thread(self._threaded, (client,))
                 _thread.start_new_thread(self._threaded, (client,))
     
 if __name__ == "__main__" :

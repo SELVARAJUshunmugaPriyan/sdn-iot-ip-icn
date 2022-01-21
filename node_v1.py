@@ -3,7 +3,6 @@ from multiprocessing.sharedctypes import Value
 from socket     import *
 from sys        import argv
 from binascii   import unhexlify
-from math       import ceil
 from time       import sleep
 from threading  import Lock, Thread
 from random     import random
@@ -25,7 +24,7 @@ class nodeUtilities:
     
 class priCtrlPlaneUnit(Thread, nodeUtilities):
     # It works for only one pkt format 41c8 broadcast with long source address
-    def __init__(self, macRwsk, nodeNum, macAdrs=None, pktBffr=b'\x41\xc8\x00\xff\xff\xff\xff', rcvdPkt=None, nodeType='ccn', connReq=None, rootCon=None) :
+    def __init__(self, macRwsk, nodeNum, macAdrs=None, pktBffr=b'\x41\xc8\x00\xff\xff\xff\xff', rcvdPkt=None, nodeType='ccn', connReq=None, adhocMode=False, rootCon=None) :
         # Call the Thread class's init function
         Thread.__init__(self) 
         self.macRwsk = macRwsk      # Node's MAC RAW socket
@@ -46,7 +45,8 @@ class priCtrlPlaneUnit(Thread, nodeUtilities):
                         'brd': 0
                         },
                     'con': {
-                        'brd': connReq
+                        'req': connReq,
+                        'brd': adhocMode, 
                     },
                     'pri': []
                     },
@@ -64,6 +64,11 @@ class priCtrlPlaneUnit(Thread, nodeUtilities):
         logging.debug('[priCtrlPlaneUnit][MAC][ADRS] : {}'.format(self.macAdrs))
             
         return
+
+    def __rootSendCont(self, payload):
+        _totalBytes = self.rootCon.send(bytes(payload, 'utf8'))
+        logging.info('[_broadcastNetMap][CNTR][PKT] : Total sent {} bytes'.format(_totalBytes))
+        return _totalBytes
 
     def __dictToSerial(self, dic):
         if not isinstance(dic, dict) :
@@ -99,19 +104,28 @@ class priCtrlPlaneUnit(Thread, nodeUtilities):
         return
 
     def _pktProcessngProcess(self):
-        _tmp_hld = str(self.rcvdPkt[0]).split('>')
-        logging.warning('[_pktProcessngProcess][PKT] : {}'.format(_tmp_hld))
+        _vldCon = False
+        _tmpHld = str(self.rcvdPkt[0]).split('>')
+        logging.debug('[_pktProcessngProcess][PKT] : {}'.format(_tmpHld))
         
-        for index in range(1, ceil(_tmp_hld.__len__()/2), 2): # Processing each attribute at a time for now
-            _attribute = _tmp_hld[index]                      # only one pair of attribute value is transmitted
-            _value = _tmp_hld[index+1]
-            logging.warning('[_pktProcessngProcess][PKT] : {} {}'.format(_attribute, _value)) # Debug takes only str as argument
+        for index in range(1, _tmpHld.__len__() - 1, 2): # Processing each attribute at a time for now
+            _attribute = _tmpHld[index]                      # only one pair of attribute value is transmitted
+            _value = _tmpHld[index+1]
+            logging.debug('[_pktProcessngProcess][PKT] : {} {}'.format(_attribute, _value)) # Debug takes only str as argument
 
             # Connection request in packet
             if 'con' in _attribute :
-                if int(_value) > self.nodeRnk :
-                    logging.warning('[_pktProcessngProcess][CON] : {}'.format(_tmp_hld[0][-2:]))
-                
+                if int(_value[1:]) > self.nodeRnk :
+                    logging.info('[_pktProcessngProcess][CON] : {}'.format(_tmpHld[0][-2:]))
+                    _vldCon = True
+                    continue
+                    
+            if _vldCon and 'nod' in _attribute :
+                if not self.nodeNum :
+                    self.__rootSendCont(payload='con_req:' + _value)
+                else :
+                    self._broadcastConnectionRequest(payload=_value)
+                continue
 
             # Rank in packet
             if 'rnk' in _attribute :
@@ -127,6 +141,7 @@ class priCtrlPlaneUnit(Thread, nodeUtilities):
                     
                     self.cache['pav'][str(self.rcvdPkt[1][-1][0])] = dict(r=_value)
                     logging.info('[_pktProcessngProcess][CACHE][PAV] : {}'.format(self.cache['pav']))
+                continue
         
             # Network map in packet
             if 'pav' in _attribute :
@@ -141,6 +156,8 @@ class priCtrlPlaneUnit(Thread, nodeUtilities):
                 except KeyError:
                     self.cache['pav'][str(self.rcvdPkt[1][-1][0])] = dict(d=(_value+'D'))
                 logging.debug('[_pktProcessngProcess][CACHE][PAV] : {}'.format(self.cache['pav']))
+                continue
+
         return
 
     def _broadcastProcess(self, sendBuffer):
@@ -161,19 +178,22 @@ class priCtrlPlaneUnit(Thread, nodeUtilities):
 
             # Sending the network map towards controller
             if not self.nodeNum :
-                self.rootCon.send(bytes(self.__dictToSerial(self.cache['pav']), 'utf8'))
-                logging.info('[_broadcastNetMap][CNTR][PKT] : Total sent {} bytes'.format(_totalBytes))
+                self.__rootSendCont('net_map:' + self.__dictToSerial(self.cache['pav']))
         except OSError:
             logging.debug(self.__dictToSerial(self.cache['pav']))
         return
 
-    def _broadcastConnectionRequest(self):
+    def _broadcastConnectionRequest(self, payload=''):
         # Connection request is only inter domain communications
         # If communication reuest approved the specified nodes only cache the specific data
+        payload += '<' + str(self.nodeNum)
         with lock:
-            with lock:
-                _totalBytes = self.macRwsk.send(self.pktBffr + self.macAdrs + b'>con>' + bytes(self.nodeRnk, 'utf8') + b'>DUMMY>')
-            logging.info('[_broadcastConnectionRequest][SENT][PKT] : Total sent {} bytes'.format(_totalBytes))
+            _totalBytes = self.macRwsk.send(self.pktBffr + self.macAdrs + b'>con>r' + bytes(str(self.nodeRnk), 'utf8') + b'>nod>' + bytes(payload, 'utf8') + b'>')
+        
+        logging.warning('[_broadcastConnectionRequest] payload {}'.format(payload))
+
+        logging.info('[_broadcastConnectionRequest][SENT][PKT] : Total sent {} bytes'.format(_totalBytes))
+
         return
 
     def run(self):
@@ -240,10 +260,6 @@ if __name__ == "__main__" :
     except IndexError :
         raise Exception("No value for number of nodes")
 
-    try:
-        _commNod = True if argv[2] else None
-    except IndexError :
-        pass
     # Create logging
     logging.basicConfig(
             filename='/home/priyan/code/sdn-iot-ip-icn/log/wpan{}.log'.
@@ -254,20 +270,13 @@ if __name__ == "__main__" :
             "%(message)s"),
             datefmt='%d/%m/%Y %H:%M:%S'
         )
-    # Generating a list of communicating nodes
-    # _commNodesLst = None
-    # if argv[2] :
-    #     _numOfNodes = _nodeNum
-    #     _numOfNodes *= _numOfNodes
-    #     _numOfCommNodes = int(argv[2])
-    #     _commNodesLst = []
-    #     while _numOfCommNodes:
-    #         _numOfCommNodes -= 1
-    #         _tempVar = int(round(random() * _numOfNodes))
-    #         if _tempVar and _tempVar not in _commNodesLst :
-    #             _commNodesLst.append(_tempVar)
-    #         else :
-    #             _numOfCommNodes += 1
+
+    try:
+        _commNod = True if argv[2] else None
+        logging.warning("Connection request ON")
+    except IndexError :
+        pass
+
     # Creating a common layer 2 socket between control and data plane
     l2_sock = socket(AF_PACKET, SOCK_RAW, ntohs(0x0003))
     l2_sock.bind(('wpan{}'.format(_nodeNum), 0, PACKET_BROADCAST)) # _nodeNum is the node ID number
