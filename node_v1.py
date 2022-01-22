@@ -1,11 +1,10 @@
 #!/usr/bin/python3
-from multiprocessing.sharedctypes import Value
-from socket     import *
-from sys        import argv
-from binascii   import unhexlify
-from time       import sleep
-from threading  import Lock, Thread
-from random     import random
+import socket
+import sys
+import binascii
+import time
+import threading
+import random
 import logging
 
 SDN_CONTROLLER_ADDRESS = '10.0.254.1' 
@@ -13,22 +12,23 @@ SDN_CONTROLLER_PORT = 14323
 TICK_TIME = 1
 MAX_TIME = 1000
 
-lock = Lock()
+lock = threading.Lock()
 
 class nodeUtilities:
     def macAddressGetter(nodeNum) :
         with open('/sys/class/net/wpan{}/address'.format(nodeNum), 'r') as f :
             strng = f.readline()
-            strng = b''.join(unhexlify(x) for x in strng[:-1].split(':')) # This should be ':' since MAC address is delimited by ':' only
+            strng = b''.join(binascii.unhexlify(x) for x in strng[:-1].split(':')) # This should be ':' since MAC address is delimited by ':' only
             return strng
     
-class priCtrlPlaneUnit(Thread, nodeUtilities):
+class priCtrlPlaneUnit(threading.Thread, nodeUtilities):
     # It works for only one pkt format 41c8 broadcast with long source address
-    def __init__(self, macRwsk, nodeNum, macAdrs=None, pktBffr=b'\x41\xc8\x00\xff\xff\xff\xff', rcvdPkt=None, nodeType='ccn', connReq=None, adhocMode=False, rootCon=None) :
+    def __init__(self, evntObj, macRwsk, nodeNum, macAdrs=None, pktBffr=b'\x41\xc8\x00\xff\xff\xff\xff', rcvdPkt=None, nodeType='ccn', connReq=None, adhocMode=False, rootCon=None) :
         # Call the Thread class's init function
-        Thread.__init__(self) 
+        threading.Thread.__init__(self)
+        self.evntObj = evntObj      # Node's common clock
         self.macRwsk = macRwsk      # Node's MAC RAW socket
-        self.nodeNum = nodeNum # Node's ID number
+        self.nodeNum = nodeNum      # Node's ID number
         if not macAdrs :
             self.macAdrs = nodeUtilities.macAddressGetter(self.nodeNum)      # Node's MAC address
         else :
@@ -217,7 +217,7 @@ class priCtrlPlaneUnit(Thread, nodeUtilities):
             # Connection request Broadcast
             if self.cache['ctr']['con']['brd'] and self.nodeRnk != 254 :
                 self._broadcastConnectionRequest()
-            sleep(TICK_TIME)
+            self.evntObj.wait(timeout=1)
             self.univClk -= 1
             if not self.univClk :
                 self.univClk = 254
@@ -228,9 +228,9 @@ class priCtrlPlaneUnit(Thread, nodeUtilities):
                 self._broadcastNetMap()
         return
 
-class priDataPlaneUnit(Thread, nodeUtilities):
+class priDataPlaneUnit(threading.Thread, nodeUtilities):
     def __init__(self, macAdrs=None, pktBffr=b'\x41\xc8\x00\xff\xff\xff\xff'):
-        Thread.__init__(self)
+        threading.Thread.__init__(self)
         if not macAdrs :
             self.macAdrs = nodeUtilities.macAddressGetter(self.nodeNum)      # Node's MAC address
         else :
@@ -251,10 +251,13 @@ class priDataPlaneUnit(Thread, nodeUtilities):
 if __name__ == "__main__" :
     _nodeNum = None
     _commNod = None
+    _adhocMod = None
     rootCon = None
+    # Initialising an event object
+    _event_obj = threading.Event()
 
     try:
-        _nodeNum = int(argv[1])
+        _nodeNum = int(sys.argv[1])
     except ValueError :
         raise Exception("Incorrect value for number of nodes")
     except IndexError :
@@ -272,23 +275,28 @@ if __name__ == "__main__" :
         )
 
     try:
-        _commNod = True if argv[2] else None
+        _commNod = True if sys.argv[2] else None
         logging.warning("Connection request ON")
+    except IndexError :
+        pass
+    try:
+        _adhocMod = True if sys.argv[3] == 'a' else False
+        logging.warning("AD HOC request ON")
     except IndexError :
         pass
 
     # Creating a common layer 2 socket between control and data plane
-    l2_sock = socket(AF_PACKET, SOCK_RAW, ntohs(0x0003))
-    l2_sock.bind(('wpan{}'.format(_nodeNum), 0, PACKET_BROADCAST)) # _nodeNum is the node ID number
+    l2_sock = socket.socket(family=socket.AF_PACKET, type=socket.SOCK_RAW, proto=socket.ntohs(0x0003))
+    l2_sock.bind(('wpan{}'.format(_nodeNum), 0, socket.PACKET_BROADCAST)) # _nodeNum is the node ID number
     l2_sock.setblocking(0)
     logging.warning('l2_socket established')
 
     if not _nodeNum :
-        rootCon = socket(AF_INET, SOCK_STREAM, 0)
+        rootCon = socket.socket(family=socket.AF_INET, type=socket.SOCK_STREAM, proto=0)
         rootCon.settimeout(15)
         rootCon.connect((SDN_CONTROLLER_ADDRESS, SDN_CONTROLLER_PORT))
 
-    ctlPlnThrd = priCtrlPlaneUnit(l2_sock, _nodeNum, connReq=_commNod, rootCon=rootCon)
+    ctlPlnThrd = priCtrlPlaneUnit(evntObj=_event_obj, macRwsk=l2_sock, nodeNum=_nodeNum, connReq=_commNod, adhocMode=_adhocMod, rootCon=rootCon)
 
     try:
         # we've created a class because in future we may have two separate sockets to
@@ -298,7 +306,9 @@ if __name__ == "__main__" :
         #datPlnThrd = priDataPlaneUnit(l2_sock)
         #datPlnThrd.start()
         #logging.warning('started data plane')
-        sleep(MAX_TIME) # Without this hold up, the finally clause executes consecutively
+        while True: # Without this hold up, the finally clause executes consecutively
+            _event_obj.set()
+            time.sleep(1)
 
     finally:
         l2_sock.close()

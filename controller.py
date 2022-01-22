@@ -1,18 +1,32 @@
 #!/usr/bin/python3
 from socket     import *
 from time       import sleep
-from threading  import Lock
+from threading  import Lock, Thread, Event
+from _thread    import exit
 import logging
-import _thread
 
 SDN_CONTROLLER_ADDRESS = '10.0.254.1' 
 SDN_CONTROLLER_PORT = 14323
 
-lock = Lock()
-
-class PavSdnCntrlr() :
-    def __init__(self, networkMap=None) :
+class PavSdnCntrlr(Thread) :
+    def __init__(self, sleepEvent=None, networkMap=None) :
         self.networkMap = networkMap if networkMap else {}
+        self.lock       = Lock()
+        self.sleepEvent = sleepEvent
+        self.counter    = 254
+
+    def _deltaFinder(self):
+        pass
+
+    def _internalCounter(self):
+        while True:
+            if not self.counter :
+                self.counter = 254
+            else :
+                self.counter -= 1
+            self.sleepEvent.wait()
+            logging.warning("[INTCTR][FUNC] self.counter {}".format(self.counter))
+        return
 
     def _networkMapper (self, strng):
         networkMapUpd = {}
@@ -75,37 +89,64 @@ class PavSdnCntrlr() :
             
         # self.networkMap[i]['v'] = list of tuples after cleaning organised by number of hops. This is the function that can be improved to accommodate ML techniques
 
-    def _threaded(self, conn):
-        conn.setblocking(0)
-        try:
+    def _manage(self, conn):
+        with conn: # this thread will be running forever so it can finally
+                # close the socket not inother threads
             while True:
-                try:
-                    data = str(conn.recv(1024))
-                    if 'con_req' in data :
-                        logging.warning(data)
-                    else :
-                        self._routeManager(self._networkMapper(data))
-                    logging.warning(self.networkMap)
-                    
-                except BlockingIOError:
-                    pass
-        finally:
-            conn.close()
-  
-    def ServerProcess(self):
+                with self.lock:
+                    try:
+                        _rcvData = str(conn.recv(1024))
+                        if 'con_req' in _rcvData :
+                            logging.warning(_rcvData)
+                        else :
+                            self._routeManager(self._networkMapper(_rcvData))
+                            logging.warning(self.networkMap)
+                    except BlockingIOError:
+                        pass
+        return
+
+    def _monitor(self, conn):
+        #_lenMapPav = str(self.networkMap).__len__()
+        #while True:
+        for i in range(10):
+            self.sleepEvent.wait()
+            logging.warning("[_monitor] self.counter {}".format(self.counter))
+            # _delta = _lenMapPav / str(self.networkMap).__len__()
+            # if _delta > 1.0 :
+            #     _delta /= _delta
+            # _delta *= 100            
+            # if _delta > 10 :
+            #     _lenMapPav.append(str(self.networkMap).__len__())
+                # Monitor progress of network mapping
+                # If it slows below 10 % for 60 s, we instruct stop the network mapping down the network
+                # **** We have to think about periodic updates later
+        return
+
+    def run(self):
+        
+        # Starting the internal counter
+        Thread(target=self._internalCounter, args=()).start() # threading.
         with socket(AF_INET, SOCK_STREAM, 0) as sck :
             sck.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
             sck.bind((SDN_CONTROLLER_ADDRESS, SDN_CONTROLLER_PORT))
             logging.info("socket binded to port", SDN_CONTROLLER_PORT)
             sck.listen(5)
             logging.info("socket is listening")
-            while True:
-                client, addr = sck.accept()
-                logging.info('Connected to :', addr[0], ':', addr[1])
-                _thread.start_new_thread(self._threaded, (client,))
-                _thread.start_new_thread(self._threaded, (client,))
+            try:
+                while True:
+                    client, addr = sck.accept()
+                    client.setblocking(0)
+                    logging.info('Connected to :', addr[0], ':', addr[1])
+                    Thread(target=self._manage, args=(client,)).start() # threading.
+                    Thread(target=self._monitor, args=(client,)).start() # threading.
+            finally:
+                exit() # _thread.
+        return
     
 if __name__ == "__main__" :
+    # Creating a common clock
+    _sleepEvent = Event() # threading. * Cannot 'with'
+    
     # Create logging
     logging.basicConfig(
             filename='/home/priyan/code/sdn-iot-ip-icn/log/controller.log',
@@ -115,5 +156,16 @@ if __name__ == "__main__" :
             "%(message)s"),
             datefmt='%d/%m/%Y %H:%M:%S'
         )
-    icnCtlr = PavSdnCntrlr()
-    icnCtlr.ServerProcess()
+    
+    sdnCtrlThrd = PavSdnCntrlr(sleepEvent=_sleepEvent)
+    #icnCtlr.ServerProcess()
+
+    try:
+        sdnCtrlThrd.start()
+        logging.warning('SDN process started')
+
+        #sleepEvent.set()
+        sleep(1)
+
+    finally:
+        pass
