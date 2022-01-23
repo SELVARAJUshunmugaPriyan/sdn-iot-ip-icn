@@ -34,7 +34,7 @@ class RootNode(threading.Thread):
                     if _rcvData :
                         if 'net_map_stop' in _rcvData :
                             with self.cachLck :
-                                self.cache['ctr']['rnk']['m_brd'] = False
+                                self.cache['ctr']['dwn_sdn_msg']['ctMng_on_off'] = 2 # 0 - default 1 - on 2 - off
                 except BlockingIOError:
                     pass
 
@@ -129,7 +129,11 @@ class PriCtrlPlaneUnit(NodeUtilities, RootNode, threading.Thread): # order in ar
         return
 
     def _pktProcessngProcess(self):
-        _vldCon = False
+        _valHolder = [ False, ] 
+        """ Recevied message validity flags 
+            [0] -> Valid conn req flag
+            [1] -> Hold SDN msg
+        """
         _tmpHld = str(self.rcvdPkt[0]).split('>')
         logging.debug('[_pktProcessngProcess][PKT] : {}'.format(_tmpHld))
         
@@ -142,10 +146,15 @@ class PriCtrlPlaneUnit(NodeUtilities, RootNode, threading.Thread): # order in ar
             if 'con' in _attribute :
                 if int(_value[1:]) > self.nodeRnk :
                     logging.info('[_pktProcessngProcess][CON] : {}'.format(_tmpHld[0][-2:]))
-                    _vldCon = True
+                    _valHolder[0] = True
                     continue
-                    
-            if _vldCon and 'nod' in _attribute :
+                   
+            # New SDN message
+            if 'sdn' in _attribute :
+                _valHolder.append(_value)
+                continue
+ 
+            if _valHolder[0] and 'nod' in _attribute :
                 with self.cachLck :
                     _getVal = self.cache['nod']
                 if not _getVal :
@@ -153,6 +162,11 @@ class PriCtrlPlaneUnit(NodeUtilities, RootNode, threading.Thread): # order in ar
                 else :
                     self._broadcastConnectionRequest(payload=_value)
                 continue
+
+            if _valHolder[1] and 'rnk' in _attribute : # if we don't have _valHolder 'rnk' in _attribute contd will execute
+                if _value < self.nodeRnk :
+                    
+                    pass
 
             # Rank in packet
             if 'rnk' in _attribute :
@@ -232,7 +246,23 @@ class PriCtrlPlaneUnit(NodeUtilities, RootNode, threading.Thread): # order in ar
 
         return
 
-    def run(self):
+    def _cachConfigUpdation(self):
+        with self.cachLck:
+            if self.cache['ctr']['dwn_sdn_msg']['ctMng_on_off'] :
+                if self.cache['ctr']['dwn_sdn_msg']['ctMng_on_off'] == 2:
+                    self.cache['ctr']['rnk']['m_brd'] = False
+                    self.cache['ctr']['con']['brd'] = True
+                elif self.cache['ctr']['dwn_sdn_msg']['ctMng_on_off'] == 1 :
+                    self.cache['ctr']['rnk']['m_brd'] = False
+                    self.cache['ctr']['con']['brd'] = True
+                # Propagating down the new sdn msg
+                self._broadcastProcess(self.pktBffr + self.macAdrs + bytes('>d_sdn_m>1>rnk>{}'.format(self.nodeRnk), 'utf8'))
+            else :
+                pass
+        return
+
+    # Change logWmsg to control logging in this function
+    def run(self, logWmsg=True):
         _sendBuffer = self.pktBffr + self.macAdrs + bytes('>rnk>', 'utf8')
         # Root node
         with self.cachLck :
@@ -253,7 +283,7 @@ class PriCtrlPlaneUnit(NodeUtilities, RootNode, threading.Thread): # order in ar
                 _getVal = self.cache['ctr']['rcv'] 
             if _getVal :
                 self._recvProcess()
-                logging.debug('[run] Receiving...')
+                logWmsg and logging.warning('[run] Receiving...')
                 # Received packet processing
                 if self.rcvdPkt :
                     self._pktProcessngProcess()
@@ -264,10 +294,14 @@ class PriCtrlPlaneUnit(NodeUtilities, RootNode, threading.Thread): # order in ar
                 _getVal = self.cache['ctr']['rnk']['brd'] and self.cache['ctr']['rnk']['m_brd']
             if _getVal :
                 self._broadcastProcess(_sendBuffer)
-                logging.debug('[run] Broadcasting Rank...')
+                logWmsg and logging.warning('[run] Broadcasting Rank...')
 
             # Wait for next tick
             self.evntObj.wait(10)
+
+            # Process new configuration
+            # should set a flag if I need to process this time can either from root thread or pkt processing function
+            self._cachConfigUpdation()
 
             # Connection request Broadcast
             _getVal = None
@@ -275,6 +309,7 @@ class PriCtrlPlaneUnit(NodeUtilities, RootNode, threading.Thread): # order in ar
                 _getVal = self.cache['ctr']['con']['brd']
             if _getVal and self.nodeRnk != 254 :
                 self._broadcastConnectionRequest()
+                logWmsg and logging.warning('[run] Broadcasting Connection Request...')
             
             # Broadcast network map
             _getVal = []
@@ -287,6 +322,7 @@ class PriCtrlPlaneUnit(NodeUtilities, RootNode, threading.Thread): # order in ar
                 with self.cachLck: 
                     logging.debug('[run] Broadcasting Map: self.cache[\'pav\'] {}'.format(self.cache['pav']))
                 self._broadcastNetMap()
+                logWmsg and logging.warning('[run] Broadcasting Network Map...')
         return
 
 class PriDataPlaneUnit(threading.Thread, NodeUtilities):
@@ -320,6 +356,7 @@ if __name__ == "__main__" :
     # Temporary cache storage with limited capability of python dict
     _cache   = {
         'nod': None, # Node number
+        # may be hold the counter value when its changed, if the change is recent process it
         'ctr': {
             'rcv': 1,
             'rnk': {
@@ -380,9 +417,9 @@ if __name__ == "__main__" :
         # deal with control and data packets separately
         if _rootNodeThrd :
             _rootNodeThrd.start()
-            logging.warning('started root node')
+            logging.warning('Started Root Node...')
         _ctlPlnThrd.start()
-        logging.warning('started control plane')
+        logging.warning('Started Control Plane...')
         #datPlnThrd = priDataPlaneUnit(l2_sock)
         #datPlnThrd.start()
         #logging.warning('started data plane')
