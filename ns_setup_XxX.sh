@@ -127,5 +127,5 @@ for i in `seq 0 $numberOfNodes`; do
 			arg="$i CONN_REQ_ON $3"
 		fi
 	done
-	ip netns exec wpan$i /home/priyan/code/sdn-iot-ip-icn/node_v*.py $arg &>>/home/priyan/code/sdn-iot-ip-icn/log/wpan$i.log &
+	ip netns exec wpan$i /home/priyan/code/sdn-iot-ip-icn/node.py $arg &>>/home/priyan/code/sdn-iot-ip-icn/log/wpan$i.log &
 done
