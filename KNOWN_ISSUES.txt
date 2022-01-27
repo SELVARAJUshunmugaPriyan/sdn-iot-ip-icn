@@ -1,0 +1,7 @@
+If controller fails, we receive empty received_msg on socket connecting vitual ethernet and root_node
+If uncompatible node script is used, the _routeManager() in controller fails mostly with IndexError
+Issue with rearranging the sequence in run() in node
+    # Wait for next tick
+    self.evntObj.wait(10)
+Network Update sent with \' character at the end
+Network cannot work more than 3x3 nodes Rank issues

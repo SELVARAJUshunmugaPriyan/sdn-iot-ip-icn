@@ -8,7 +8,8 @@ import node
 
 SDN_CONTROLLER_ADDRESS  = '10.0.254.1' 
 SDN_CONTROLLER_PORT     = 14323
-MSGS_BEFORE_STOP_MAP    = 5
+MSGS_BEFORE_STOP_MAP    = 143
+TRICKLE_TIME            = 143
 
 class PavSdnCntrlr(threading.Thread, node.NodeUtilities) :
     def __init__(self, evntObj=None, networkMap=None) :
@@ -31,7 +32,7 @@ class PavSdnCntrlr(threading.Thread, node.NodeUtilities) :
         if _delta > 10 :
             self.lenMapPav_r = _lenMapPav
             _rtBul = True
-        logging.warning("[_deltaFinder] _lenMapPav {} _delta {} _rtBul {}".format(_lenMapPav, _delta, _rtBul))
+        logging.debug("[_deltaFinder] _lenMapPav {} _delta {} _rtBul {}".format(_lenMapPav, _delta, _rtBul))
         return _rtBul
 
     def _networkMapper (self, strng):
@@ -39,31 +40,50 @@ class PavSdnCntrlr(threading.Thread, node.NodeUtilities) :
         downRouteFlag = False
         index = 0
         startNode = ''
+        logging.debug("[_networkMapper] strng {}".format(strng))
         if not isinstance(strng, str):
             raise TypeError
         while index < strng.__len__():
-            if strng[index] == '0' :
+            if strng[index] in '0123456789' :
+                logging.debug("[_networkMapper] strng[index] {}".format(strng[index]))
                 if strng[index+2] == 'r' :
                     logging.debug("[_networkMapper] index {} networkMapUpd {}".format(index, networkMapUpd))
-
-                    rank = strng[index+3:index+5] if strng[index+4] not in ('D', 'd', '0') else strng[index+3] # If rank is in two digits and this is why its helpful in keep ranks in power of 2's since it will not end with '0'
+                    
+                    _rank = ''
                     try:
-                        networkMapUpd[strng[index+1]]['r'] = rank
+                        if strng[index+4] not in ('D', 'd', '0') :
+                            _rank = strng[index+3:index+5]
+                        else :
+                            _rank = strng[index+3]
+                    except IndexError:
+                        _rank = strng[index+3] 
+                    """ If rank is in two digits and this is why its helpful in keep ranks in power of 2's since it will not end with '0'"""
+                    logging.debug("[_networkMapper] {} _rank {}".format(strng[index:index+5], _rank))
+                    try:
+                        networkMapUpd[strng[index:index+2]]['r'] = _rank
+                        logging.debug("[_networkMapper] strng[index:index+2] {}".format(strng[index:index+2]))
                     except KeyError:
-                        networkMapUpd[strng[index+1]] = dict(r=rank, v='')
+                        networkMapUpd[strng[index:index+2]] = dict(r=_rank, v='')
+                        logging.debug("[_networkMapper] {}".format(strng[index:index+2]))
                     if downRouteFlag :
-                        if startNode not in networkMapUpd[strng[index+1]]['v'] :
-                            networkMapUpd[strng[index+1]]['v'] += ' ' + startNode
+                        logging.debug("[_networkMapper] startNode {} strng[index+1] {}".format(startNode, strng[index:index+2]))
+                        if startNode not in networkMapUpd[strng[index:index+2]]['v'] :
+                            networkMapUpd[strng[index:index+2]]['v'] += ' ' + startNode
                 index += 3
             elif strng[index] == 'd':
                 downRouteFlag = True
-                startNode += strng[index-3] + ','
+                if not startNode or startNode == ' ':
+                    startNode += strng[index-4:index-2]
+                else :
+                    startNode += ',' + strng[index-4:index-2]
                 logging.debug("[_networkMapper] startNode {}".format(startNode))
 
             elif strng[index] == 'D':
                 downRouteFlag = False
-                startNode = ' '
+                if not startNode :
+                    startNode = ' '
             index += 1
+        logging.debug("[_networkMapper] networkMapUpd {}".format(networkMapUpd))
         return networkMapUpd
 
     # Redundant function can be improved after cleaning the network_map sent towards controller
@@ -106,8 +126,10 @@ class PavSdnCntrlr(threading.Thread, node.NodeUtilities) :
                             logging.warning("[_manage][RECV][CON] Receieved message {}".format(_rcvData))
                         if 'net_map' in _rcvData :
                             self.flags['map']['rdy'] = True
-                            self._routeManager(self._networkMapper(_rcvData))
-                            logging.warning("[_manage][RECV][MAP] Receieved message {}".format(self.networkMap))
+                            _rcvData = _rcvData[10:-1] # -1 is a dirty hack
+                            if _rcvData and 'r' in _rcvData:
+                                self._routeManager(self._networkMapper(_rcvData))
+                                logging.warning("[_manage][RECV][MAP] Receieved message {}".format(self.networkMap))
                     except BlockingIOError:
                         pass
         return
@@ -122,13 +144,13 @@ class PavSdnCntrlr(threading.Thread, node.NodeUtilities) :
             self.evntObj.wait(10)
             if self.flags['map']['rdy'] :
                 self.flags['map']['rdy'] = False
-                if self._deltaFinder() :
+                if self._deltaFinder() : # > 10% True
                     _valBfrStop = MSGS_BEFORE_STOP_MAP
-                    _countNoted = self.counter
+                    _countNoted = self.counter - TRICKLE_TIME
                 else :
                     _valBfrStop -= 1
-            if not _valBfrStop  or (_countNoted == (self.counter - 40)) :
-                _valBfrStop = 1
+            if not _valBfrStop  or ( self.counter <  _countNoted and self.counter > _countNoted - 3) :
+                _valBfrStop = MSGS_BEFORE_STOP_MAP
                 with self.lock:
                     _totalBytes = conn.send(b"net_map_stop")
                 logging.info("[_monitor][SNT][CTL] Total sent {} bytes".format(_totalBytes))
