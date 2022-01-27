@@ -32,9 +32,14 @@ class RootNode(threading.Thread):
                         _rcvData = str(self.rootCon.recv(1024))
                     logging.warning("[rootSend][ROOT] : _rcvData {}".format(_rcvData))
                     if _rcvData :
-                        if 'net_map_stop' in _rcvData :
-                            with self.cachLck :
-                                self.cache['ctr']['dwn_sdn_msg']['ctMng_on_off'] = 2 # 0 - default 1 - on 2 - off
+                        with self.cachLck :
+                            self.cache['ctr']['sdn']['nm'] = True
+                            self.cache['ctr']['sdn']['msh'] = _rcvData
+                        # [NOTE] Not useful to process the SDN control packet in root thread. It should be processed
+                        # by node thread
+                        # if 'net_map_stop' in _rcvData :
+                        #     with self.cachLck :
+                        #         self.cache['ctr']['dwn_sdn_msg']['ctMng_on_off'] = 2 # 0 - default 1 - on 2 - off
                 except BlockingIOError:
                     pass
 
@@ -151,7 +156,7 @@ class PriCtrlPlaneUnit(NodeUtilities, RootNode, threading.Thread): # order in ar
                    
             # New SDN message
             if 'sdn' in _attribute :
-                _valHolder.append(_value)
+                _valHolder.append(True)
                 continue
  
             if _valHolder[0] and 'nod' in _attribute :
@@ -163,9 +168,13 @@ class PriCtrlPlaneUnit(NodeUtilities, RootNode, threading.Thread): # order in ar
                     self._broadcastConnectionRequest(payload=_value)
                 continue
 
+            # [NOTE] We may want process SDN message in _cacheConfigUpdation. Rantional : It makes sense there since we are al
+            # ready updating cache which holds all the node's configuration
             if _valHolder[1] and 'rnk' in _attribute : # if we don't have _valHolder 'rnk' in _attribute contd will execute
                 if _value < self.nodeRnk :
-                    
+                     with self.lock:
+                        self.cache['ctr']['sdn']['nm']  = True
+                        self.cache['ctr']['sdn']['msg'] = _tmpHld
                     pass
 
             # Rank in packet
@@ -247,14 +256,14 @@ class PriCtrlPlaneUnit(NodeUtilities, RootNode, threading.Thread): # order in ar
         return
 
     def _cachConfigUpdation(self):
-        with self.cachLck:
-            if self.cache['ctr']['dwn_sdn_msg']['ctMng_on_off'] :
-                if self.cache['ctr']['dwn_sdn_msg']['ctMng_on_off'] == 2:
-                    self.cache['ctr']['rnk']['m_brd'] = False
-                    self.cache['ctr']['con']['brd'] = True
-                elif self.cache['ctr']['dwn_sdn_msg']['ctMng_on_off'] == 1 :
-                    self.cache['ctr']['rnk']['m_brd'] = False
-                    self.cache['ctr']['con']['brd'] = True
+        # with self.cachLck:
+            # if self.cache['ctr']['dwn_sdn_msg']['ctMng_on_off'] :
+            #     if self.cache['ctr']['dwn_sdn_msg']['ctMng_on_off'] == 2:
+            #         self.cache['ctr']['rnk']['m_brd'] = False
+            #         self.cache['ctr']['con']['brd'] = True
+            #     elif self.cache['ctr']['dwn_sdn_msg']['ctMng_on_off'] == 1 :
+            #         self.cache['ctr']['rnk']['m_brd'] = False
+            #         self.cache['ctr']['con']['brd'] = True
                 # Propagating down the new sdn msg
                 self._broadcastProcess(self.pktBffr + self.macAdrs + bytes('>d_sdn_m>1>rnk>{}'.format(self.nodeRnk), 'utf8'))
             else :
@@ -300,8 +309,12 @@ class PriCtrlPlaneUnit(NodeUtilities, RootNode, threading.Thread): # order in ar
             self.evntObj.wait(10)
 
             # Process new configuration
-            # should set a flag if I need to process this time can either from root thread or pkt processing function
-            self._cachConfigUpdation()
+            # [COMPLETED] should set a flag if I need to process this time can either from root thread or pkt processing function
+            _getVal = None
+            with self.cachLck:
+                _getVal = self.cache['ctr']['sdn']['nm']
+            if _getVal :
+                self._cachConfigUpdation()
 
             # Connection request Broadcast
             _getVal = None
@@ -354,6 +367,7 @@ if __name__ == "__main__" :
     _sockLck         = threading.Lock()
     _cachLck         = threading.Lock()
     # Temporary cache storage with limited capability of python dict
+    # [INFO] Keep key in 3 characters for fast processing
     _cache   = {
         'nod': None, # Node number
         # may be hold the counter value when its changed, if the change is recent process it
@@ -362,15 +376,19 @@ if __name__ == "__main__" :
             'rnk': {
                 'brd': 0,
                 'm_brd' : True
-                },
+            },
             'con': {
                 'req': None,
                 'brd': None, 
             },
-            'pri': []
+            'pri': [],
+            'sdn': {
+                'nm' : False, # New message
+                'msg': ''     # Actual message
             },
+        },
         'pav': {} # Dict of lower rank nodes
-        }
+    }
     # Initialising an event object
     _event_obj = threading.Event()
 
