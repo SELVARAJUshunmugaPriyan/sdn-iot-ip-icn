@@ -44,7 +44,7 @@ class PavSdnCntrlr(threading.Thread, node.NodeUtilities) :
         if not isinstance(strng, str):
             raise TypeError
         while index < strng.__len__():
-            if strng[index] in '0123456789' :
+            if strng[index] in '0143256789' :
                 logging.debug("[_networkMapper] strng[index] {}".format(strng[index]))
                 if strng[index+2] == 'r' :
                     logging.debug("[_networkMapper] index {} networkMapUpd {}".format(index, networkMapUpd))
