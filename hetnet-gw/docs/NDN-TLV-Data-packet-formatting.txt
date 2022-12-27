@@ -1,4 +1,4 @@
-** credit : PiCCN for following their model in implementation. They couldn't be used directly due to absence of link layer or wire format for 15.4.
+*  credit : PiCCN for following their model in implementation. They couldn't be used directly due to absence of link layer or wire format for 15.4.
 ** credit : NDN TLV 0.3 format (latest)
 	
 # Bytes	hex(0xXX)
