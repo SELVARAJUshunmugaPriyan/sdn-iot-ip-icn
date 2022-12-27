@@ -11,8 +11,8 @@
 
 	>> Start of Data packet TLV
 	
-01	0x06 		Data_type
-02	0x0D 		Data_length
+	0x06 		Data_type
+	0x0B 		Data_length
 
 Data_value: {
 
@@ -26,19 +26,19 @@ Data_value: {
 		        OtherTypeComponent
 	*/
 
-03	0x07 		Name_type
+01	0x07 		Name_type
 
 	note: Name of WSN node (NodeID and each node has only temperature sensor in our consideration, so following data directly conforms to temperature value))
 	
-04	0x03 		Name_length
+02	0x03 		Name_length
 	
 	Name_value: {
 	
 	// GenericNameComponent = GENERIC-NAME-COMPONENT-TYPE TLV-LENGTH *OCTET
 
-05		0x08 	GenericNameComponent_type
-06		0x01 	GenericNameComponent_length
-07	0x00 - 0xFF 	GenericNameComponent_Value
+03		0x08 	GenericNameComponent_type
+04		0x01 	GenericNameComponent_length
+05	0x00 - 0xFF 	GenericNameComponent_Value
 
 	note: No. of nodes to be experimented is < 255 nodes used so the ID would be < 255 
 
@@ -50,9 +50,9 @@ Data_value: {
 
 	// Content = CONTENT-TYPE TLV-LENGTH *OCTET
 	
-08	0x14 		Content_type
-09	0x01 		Content_length
-0A	0x00 - 0xFF 	Content_value
+06	0x15 		Content_type
+07	0x01 		Content_length
+08	0x00 - 0xFF 	Content_value
 	
 	>> Start of TLV-format for Signature Component
 	
@@ -61,17 +61,17 @@ Data_value: {
                   SignatureType
                   [KeyLocator] */
 	
-0B	0x16 		signature-info_type
-0C	0x01 		signature-info_length
-0D	0xFF		signature-info_value
+09	0x16 		signature-info_type
+0A	0x01 		signature-info_length
+0B	0xFF		signature-info_value
 
 	note: Since signing has been disabled in 15.4 network, following encoding shall be ignored (refer below noteA).
 
 	// SignatureValue = SIGNATURE-VALUE-TYPE TLV-LENGTH *OCTET
 	
-0E	0x17		signature-value_type
-0F	0x01		signature-value_length
-10	0x00		signature-value_value
+0C	0x17		signature-value_type
+0D	0x01		signature-value_length
+0E	0x00		signature-value_value
 
 }
 	noteA: sha256 produces 64 bytes of hash signatures which occupies signifacant portion of 100-octet payload in 15.4 wire format rendering it unusable. So, signing has been diasbled for research purposes. It has been indicated with usage of 0xFF (unassigned signing type). However, for research purposes in data integrity and provenance, it can be enabled in single octet name and single octet content networking (refer noteB).
@@ -80,8 +80,8 @@ Data_value: {
 	
 	So, the resulting NDN-TLV formatting for a single octet named and single octet data content would be ...
 	
-	| Data   | Name N.value | Content | Signature | |
-	  060D     0703 0801 XX   1401 XX   1601   FF
+	| Data   | Name   | N.value || Content | Signature | |
+	  060B     0703     0801 XX    1501 XX   1601   FF
 	
 	060D07030801XX1401XX1601FF
 
