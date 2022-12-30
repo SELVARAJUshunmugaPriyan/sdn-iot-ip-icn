@@ -9,6 +9,7 @@ from mn_wifi.net import Mininet_wifi
 from mn_wifi.link import wmediumd, adhoc
 from mn_wifi.wmediumdConnector import interference
 
+BASE_DIR = "/home/priyan/github-repo-offline/sdn-iot-ip-icn/hetnet-gw/"
 
 def topology():
     "Create a network."
@@ -20,8 +21,11 @@ def topology():
     sta3 = net.addStation('sta3', position='150,200,0')
     sta4 = net.addStation('sta4', position='150,150,0')
     sta5 = net.addStation('sta5', position='200,150,0')
-    ap1 = net.addAccessPoint('ap1', ssid='ssid_1', mode='g', channel='5',
-                                                     failMode="standalone", position='200,200,0')
+    ap1 = net.addAccessPoint('ap1', ssid='ssid_1', mode='g', channel='5', failMode="standalone", position='200,200,0')
+    # ap1 = net.addAccessPoint('ap1', ssid='ssid_1', mode='g', channel='5', failMode="standalone", position='200,200,0')
+    # ap1 = net.addAccessPoint('ap1', ssid='ssid_1', mode='g', channel='5', failMode="standalone", position='200,200,0')
+    # ap1 = net.addAccessPoint('ap1', ssid='ssid_1', mode='g', channel='5', failMode="standalone", position='200,200,0')
+    # ap1 = net.addAccessPoint('ap1', ssid='ssid_1', mode='g', channel='5', failMode="standalone", position='200,200,0')
 
     info("*** Configuring Propagation Model\n")
     net.setPropagationModel(model="logDistance", exp=4)
@@ -36,24 +40,24 @@ def topology():
     net.addLink(ap1, sta4)
     net.addLink(ap1, sta5)
 
-    net.plotGraph(max_x=300, max_y=300)
+    #net.plotGraph(max_x=300, max_y=300)
 
     info("*** Starting network\n")
     net.build()
     net.addNAT().configDefault()
     ap1.start([])
 
+    ap1.cmd("echo 1 > /proc/sys/net/ipv4/ip_forward")
+
+    info("*** Running user commands\n")
+    sta1.cmd(f"{BASE_DIR}scripts/wifi-IP-client.py 1")   # Change Destination and AP IP address ( ... is usually +1 to # of sta nodes)
+    sta2.cmd(f"{BASE_DIR}scripts/wifi-IP-client.py 2")   # Not needed default route has been set to AP
+    sta3.cmd(f"{BASE_DIR}scripts/wifi-IP-client.py 3")
+    sta4.cmd(f"{BASE_DIR}scripts/wifi-IP-client.py 4")
+    sta5.cmd(f"{BASE_DIR}scripts/wifi-IP-client.py 5")
+
     info("*** Running CLI\n")
     CLI(net)
-
-    ap1.cmd("echo 1 > /proc/sys/net/ipv4/ip_forward")
-    """
-    sta1.cmd("ip r a 198.51.100.100/32 via 10.0.0.6") # Change Destination and AP IP address ( ... is usually +1 to # of sta nodes)
-    sta2.cmd("ip r a 198.51.100.100/32 via 10.0.0.6")
-    sta3.cmd("ip r a 198.51.100.100/32 via 10.0.0.6")
-    sta4.cmd("ip r a 198.51.100.100/32 via 10.0.0.6")
-    sta5.cmd("ip r a 198.51.100.100/32 via 10.0.0.6")
-    """
     
     if len(sys.argv) > 1 :
             info("*** Introducing loss ", sys.argv[2], "%\n")
@@ -66,7 +70,7 @@ def topology():
 	
     f = sys.argv[2] if len(sys.argv) > 1 else "0"
 
-    info("*** Running Test\n")
+    #info("*** Running Test\n")
     #sta1.cmd("ping -c 600 -s 1232 198.51.100.100 | tee log/A_W_6_" + f + "L_6x6_.log")
     #sta22.cmd("ping -c 300 -s 1232 198.51.100.100 | tee log/A_W_6_0L_" + f + "x" + f + "_Stable.log")
 
