@@ -5,7 +5,7 @@ import sys
 import time
 
 SERVER_ADDRESS = ('10.0.0.6', 65432)
-DATA_INTERVAL  = 0.005
+DATA_INTERVAL  = 10
 
 if __name__ == "__main__" :
 
@@ -25,7 +25,7 @@ if __name__ == "__main__" :
         logging.debug(f"Socket Created")
         while True :
             for i in range(255) :
-                logging.debug(f"Sending squence number: {i}")
+                logging.info(f"Sending squence number: {i}")
                 _tBytesSent = udpSock.sendto(i.to_bytes(1, 'little'), SERVER_ADDRESS)
                 logging.info(f"Total bytes sent: {_tBytesSent}")
                 try:

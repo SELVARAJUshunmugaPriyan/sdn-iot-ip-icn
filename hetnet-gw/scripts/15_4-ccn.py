@@ -15,7 +15,7 @@ import logging
 import select
 import random
 
-DATA_INTERVAL = 0.005
+DATA_INTERVAL = 10
 
 def emptySocket(sock):
     # Remove the data present on the socket
@@ -59,7 +59,7 @@ if __name__ == "__main__" :
             filename='/home/priyan/github-repo-offline/sdn-iot-ip-icn/hetnet-gw/logs/15_4-ccn/wpan{}.log'.
                 format(_cache['nod']),
             filemode='a',
-            level=logging.INFO,
+            level=logging.DEBUG,
             format=("%(asctime)s-%(levelname)s-%(filename)s-%(lineno)d "
             "%(message)s"),
         )
@@ -76,18 +76,24 @@ if __name__ == "__main__" :
 
     logging.info(_cache['sat'])
     while _cache['sat'] :
-        try:
-            _rcvPkt = None
-            if round(random.random() * 100) > _cache['drp'] :
-                _rcvPkt = l2_sock.recvfrom(123)
-                _frame = _rcvPkt[0].decode('unicode-escape')
-                _data = [ ord(_frame[x]) for x in (-7, -4) ]
-                logging.info('{} {}'.format(_data[0], _data[1]))
-            emptySocket(l2_sock)
-        except BlockingIOError:
-            pass
-        except IndexError:
-            pass
+        _rcvPkt = None
+        if round(random.random() * 100) > _cache['drp'] :
+            while True:
+                _inputReady, o, e = select.select([l2_sock],[],[], 0.0)
+                if not _inputReady.__len__(): 
+                    break
+                try:
+                    _rcvPkt = l2_sock.recvfrom(123)
+                    _frame = _rcvPkt[0].decode('unicode-escape')
+                    _data = [ ord(_frame[x]) for x in (-7, -4) ]
+                    logging.debug('{} {}'.format(_data[0], _data[1]))
+                    if _data[0] == int(_cache['nod']) :
+                        logging.info('{} {}'.format(_data[0], _data[1]))
+                except BlockingIOError:
+                    pass
+                except IndexError:
+                    pass
+        #emptySocket(l2_sock)
         if _cache['com'] and round(random.random() * 100) > _cache['drp']: # Generating New content
             _cmpltSndBfr = _sndBfr + ndnPktGetter(_cache['nod'], tempVal=round(random.random() * 255))
             _tBytes = l2_sock.send(_cmpltSndBfr)
