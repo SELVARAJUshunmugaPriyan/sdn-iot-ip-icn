@@ -1,0 +1,705 @@
+wpan_hwsim radio0:
+	edge:
+		radio1
+		lqi: 0xff
+wpan_hwsim radio1:
+	edge:
+		radio7
+		lqi: 0xff
+	edge:
+		radio8
+		lqi: 0xff
+	edge:
+		radio2
+		lqi: 0xff
+	edge:
+		radio0
+		lqi: 0xff
+wpan_hwsim radio2:
+	edge:
+		radio7
+		lqi: 0xff
+	edge:
+		radio8
+		lqi: 0xff
+	edge:
+		radio9
+		lqi: 0xff
+	edge:
+		radio3
+		lqi: 0xff
+	edge:
+		radio1
+		lqi: 0xff
+wpan_hwsim radio3:
+	edge:
+		radio8
+		lqi: 0xff
+	edge:
+		radio9
+		lqi: 0xff
+	edge:
+		radio10
+		lqi: 0xff
+	edge:
+		radio4
+		lqi: 0xff
+	edge:
+		radio2
+		lqi: 0xff
+wpan_hwsim radio4:
+	edge:
+		radio9
+		lqi: 0xff
+	edge:
+		radio10
+		lqi: 0xff
+	edge:
+		radio11
+		lqi: 0xff
+	edge:
+		radio5
+		lqi: 0xff
+	edge:
+		radio3
+		lqi: 0xff
+wpan_hwsim radio5:
+	edge:
+		radio10
+		lqi: 0xff
+	edge:
+		radio11
+		lqi: 0xff
+	edge:
+		radio12
+		lqi: 0xff
+	edge:
+		radio6
+		lqi: 0xff
+	edge:
+		radio4
+		lqi: 0xff
+wpan_hwsim radio6:
+	edge:
+		radio11
+		lqi: 0xff
+	edge:
+		radio12
+		lqi: 0xff
+	edge:
+		radio5
+		lqi: 0xff
+wpan_hwsim radio7:
+	edge:
+		radio13
+		lqi: 0xff
+	edge:
+		radio14
+		lqi: 0xff
+	edge:
+		radio8
+		lqi: 0xff
+	edge:
+		radio2
+		lqi: 0xff
+	edge:
+		radio1
+		lqi: 0xff
+wpan_hwsim radio8:
+	edge:
+		radio13
+		lqi: 0xff
+	edge:
+		radio14
+		lqi: 0xff
+	edge:
+		radio15
+		lqi: 0xff
+	edge:
+		radio9
+		lqi: 0xff
+	edge:
+		radio7
+		lqi: 0xff
+	edge:
+		radio3
+		lqi: 0xff
+	edge:
+		radio2
+		lqi: 0xff
+	edge:
+		radio1
+		lqi: 0xff
+wpan_hwsim radio9:
+	edge:
+		radio14
+		lqi: 0xff
+	edge:
+		radio15
+		lqi: 0xff
+	edge:
+		radio16
+		lqi: 0xff
+	edge:
+		radio10
+		lqi: 0xff
+	edge:
+		radio8
+		lqi: 0xff
+	edge:
+		radio4
+		lqi: 0xff
+	edge:
+		radio3
+		lqi: 0xff
+	edge:
+		radio2
+		lqi: 0xff
+wpan_hwsim radio10:
+	edge:
+		radio15
+		lqi: 0xff
+	edge:
+		radio16
+		lqi: 0xff
+	edge:
+		radio17
+		lqi: 0xff
+	edge:
+		radio11
+		lqi: 0xff
+	edge:
+		radio9
+		lqi: 0xff
+	edge:
+		radio5
+		lqi: 0xff
+	edge:
+		radio4
+		lqi: 0xff
+	edge:
+		radio3
+		lqi: 0xff
+wpan_hwsim radio11:
+	edge:
+		radio16
+		lqi: 0xff
+	edge:
+		radio17
+		lqi: 0xff
+	edge:
+		radio18
+		lqi: 0xff
+	edge:
+		radio12
+		lqi: 0xff
+	edge:
+		radio10
+		lqi: 0xff
+	edge:
+		radio6
+		lqi: 0xff
+	edge:
+		radio5
+		lqi: 0xff
+	edge:
+		radio4
+		lqi: 0xff
+wpan_hwsim radio12:
+	edge:
+		radio17
+		lqi: 0xff
+	edge:
+		radio18
+		lqi: 0xff
+	edge:
+		radio11
+		lqi: 0xff
+	edge:
+		radio6
+		lqi: 0xff
+	edge:
+		radio5
+		lqi: 0xff
+wpan_hwsim radio13:
+	edge:
+		radio19
+		lqi: 0xff
+	edge:
+		radio20
+		lqi: 0xff
+	edge:
+		radio14
+		lqi: 0xff
+	edge:
+		radio8
+		lqi: 0xff
+	edge:
+		radio7
+		lqi: 0xff
+wpan_hwsim radio14:
+	edge:
+		radio19
+		lqi: 0xff
+	edge:
+		radio20
+		lqi: 0xff
+	edge:
+		radio21
+		lqi: 0xff
+	edge:
+		radio15
+		lqi: 0xff
+	edge:
+		radio13
+		lqi: 0xff
+	edge:
+		radio9
+		lqi: 0xff
+	edge:
+		radio8
+		lqi: 0xff
+	edge:
+		radio7
+		lqi: 0xff
+wpan_hwsim radio15:
+	edge:
+		radio20
+		lqi: 0xff
+	edge:
+		radio21
+		lqi: 0xff
+	edge:
+		radio22
+		lqi: 0xff
+	edge:
+		radio16
+		lqi: 0xff
+	edge:
+		radio14
+		lqi: 0xff
+	edge:
+		radio10
+		lqi: 0xff
+	edge:
+		radio9
+		lqi: 0xff
+	edge:
+		radio8
+		lqi: 0xff
+wpan_hwsim radio16:
+	edge:
+		radio21
+		lqi: 0xff
+	edge:
+		radio22
+		lqi: 0xff
+	edge:
+		radio23
+		lqi: 0xff
+	edge:
+		radio17
+		lqi: 0xff
+	edge:
+		radio15
+		lqi: 0xff
+	edge:
+		radio11
+		lqi: 0xff
+	edge:
+		radio10
+		lqi: 0xff
+	edge:
+		radio9
+		lqi: 0xff
+wpan_hwsim radio17:
+	edge:
+		radio22
+		lqi: 0xff
+	edge:
+		radio23
+		lqi: 0xff
+	edge:
+		radio24
+		lqi: 0xff
+	edge:
+		radio18
+		lqi: 0xff
+	edge:
+		radio16
+		lqi: 0xff
+	edge:
+		radio12
+		lqi: 0xff
+	edge:
+		radio11
+		lqi: 0xff
+	edge:
+		radio10
+		lqi: 0xff
+wpan_hwsim radio18:
+	edge:
+		radio23
+		lqi: 0xff
+	edge:
+		radio24
+		lqi: 0xff
+	edge:
+		radio17
+		lqi: 0xff
+	edge:
+		radio12
+		lqi: 0xff
+	edge:
+		radio11
+		lqi: 0xff
+wpan_hwsim radio19:
+	edge:
+		radio25
+		lqi: 0xff
+	edge:
+		radio26
+		lqi: 0xff
+	edge:
+		radio20
+		lqi: 0xff
+	edge:
+		radio14
+		lqi: 0xff
+	edge:
+		radio13
+		lqi: 0xff
+wpan_hwsim radio20:
+	edge:
+		radio25
+		lqi: 0xff
+	edge:
+		radio26
+		lqi: 0xff
+	edge:
+		radio27
+		lqi: 0xff
+	edge:
+		radio21
+		lqi: 0xff
+	edge:
+		radio19
+		lqi: 0xff
+	edge:
+		radio15
+		lqi: 0xff
+	edge:
+		radio14
+		lqi: 0xff
+	edge:
+		radio13
+		lqi: 0xff
+wpan_hwsim radio21:
+	edge:
+		radio26
+		lqi: 0xff
+	edge:
+		radio27
+		lqi: 0xff
+	edge:
+		radio28
+		lqi: 0xff
+	edge:
+		radio22
+		lqi: 0xff
+	edge:
+		radio20
+		lqi: 0xff
+	edge:
+		radio16
+		lqi: 0xff
+	edge:
+		radio15
+		lqi: 0xff
+	edge:
+		radio14
+		lqi: 0xff
+wpan_hwsim radio22:
+	edge:
+		radio27
+		lqi: 0xff
+	edge:
+		radio28
+		lqi: 0xff
+	edge:
+		radio29
+		lqi: 0xff
+	edge:
+		radio23
+		lqi: 0xff
+	edge:
+		radio21
+		lqi: 0xff
+	edge:
+		radio17
+		lqi: 0xff
+	edge:
+		radio16
+		lqi: 0xff
+	edge:
+		radio15
+		lqi: 0xff
+wpan_hwsim radio23:
+	edge:
+		radio28
+		lqi: 0xff
+	edge:
+		radio29
+		lqi: 0xff
+	edge:
+		radio30
+		lqi: 0xff
+	edge:
+		radio24
+		lqi: 0xff
+	edge:
+		radio22
+		lqi: 0xff
+	edge:
+		radio18
+		lqi: 0xff
+	edge:
+		radio17
+		lqi: 0xff
+	edge:
+		radio16
+		lqi: 0xff
+wpan_hwsim radio24:
+	edge:
+		radio29
+		lqi: 0xff
+	edge:
+		radio30
+		lqi: 0xff
+	edge:
+		radio23
+		lqi: 0xff
+	edge:
+		radio18
+		lqi: 0xff
+	edge:
+		radio17
+		lqi: 0xff
+wpan_hwsim radio25:
+	edge:
+		radio31
+		lqi: 0xff
+	edge:
+		radio32
+		lqi: 0xff
+	edge:
+		radio26
+		lqi: 0xff
+	edge:
+		radio20
+		lqi: 0xff
+	edge:
+		radio19
+		lqi: 0xff
+wpan_hwsim radio26:
+	edge:
+		radio31
+		lqi: 0xff
+	edge:
+		radio32
+		lqi: 0xff
+	edge:
+		radio33
+		lqi: 0xff
+	edge:
+		radio27
+		lqi: 0xff
+	edge:
+		radio25
+		lqi: 0xff
+	edge:
+		radio21
+		lqi: 0xff
+	edge:
+		radio20
+		lqi: 0xff
+	edge:
+		radio19
+		lqi: 0xff
+wpan_hwsim radio27:
+	edge:
+		radio32
+		lqi: 0xff
+	edge:
+		radio33
+		lqi: 0xff
+	edge:
+		radio34
+		lqi: 0xff
+	edge:
+		radio28
+		lqi: 0xff
+	edge:
+		radio26
+		lqi: 0xff
+	edge:
+		radio22
+		lqi: 0xff
+	edge:
+		radio21
+		lqi: 0xff
+	edge:
+		radio20
+		lqi: 0xff
+wpan_hwsim radio28:
+	edge:
+		radio33
+		lqi: 0xff
+	edge:
+		radio34
+		lqi: 0xff
+	edge:
+		radio35
+		lqi: 0xff
+	edge:
+		radio29
+		lqi: 0xff
+	edge:
+		radio27
+		lqi: 0xff
+	edge:
+		radio23
+		lqi: 0xff
+	edge:
+		radio22
+		lqi: 0xff
+	edge:
+		radio21
+		lqi: 0xff
+wpan_hwsim radio29:
+	edge:
+		radio34
+		lqi: 0xff
+	edge:
+		radio35
+		lqi: 0xff
+	edge:
+		radio36
+		lqi: 0xff
+	edge:
+		radio30
+		lqi: 0xff
+	edge:
+		radio28
+		lqi: 0xff
+	edge:
+		radio24
+		lqi: 0xff
+	edge:
+		radio23
+		lqi: 0xff
+	edge:
+		radio22
+		lqi: 0xff
+wpan_hwsim radio30:
+	edge:
+		radio35
+		lqi: 0xff
+	edge:
+		radio36
+		lqi: 0xff
+	edge:
+		radio29
+		lqi: 0xff
+	edge:
+		radio24
+		lqi: 0xff
+	edge:
+		radio23
+		lqi: 0xff
+wpan_hwsim radio31:
+	edge:
+		radio32
+		lqi: 0xff
+	edge:
+		radio26
+		lqi: 0xff
+	edge:
+		radio25
+		lqi: 0xff
+wpan_hwsim radio32:
+	edge:
+		radio33
+		lqi: 0xff
+	edge:
+		radio31
+		lqi: 0xff
+	edge:
+		radio27
+		lqi: 0xff
+	edge:
+		radio26
+		lqi: 0xff
+	edge:
+		radio25
+		lqi: 0xff
+wpan_hwsim radio33:
+	edge:
+		radio34
+		lqi: 0xff
+	edge:
+		radio32
+		lqi: 0xff
+	edge:
+		radio28
+		lqi: 0xff
+	edge:
+		radio27
+		lqi: 0xff
+	edge:
+		radio26
+		lqi: 0xff
+wpan_hwsim radio34:
+	edge:
+		radio35
+		lqi: 0xff
+	edge:
+		radio33
+		lqi: 0xff
+	edge:
+		radio29
+		lqi: 0xff
+	edge:
+		radio28
+		lqi: 0xff
+	edge:
+		radio27
+		lqi: 0xff
+wpan_hwsim radio35:
+	edge:
+		radio36
+		lqi: 0xff
+	edge:
+		radio34
+		lqi: 0xff
+	edge:
+		radio30
+		lqi: 0xff
+	edge:
+		radio29
+		lqi: 0xff
+	edge:
+		radio28
+		lqi: 0xff
+wpan_hwsim radio36:
+	edge:
+		radio35
+		lqi: 0xff
+	edge:
+		radio30
+		lqi: 0xff
+	edge:
+		radio29
+		lqi: 0xff
+wpan_hwsim radio37:
+wpan_hwsim radio38:

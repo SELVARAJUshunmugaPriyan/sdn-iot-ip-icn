@@ -6,10 +6,12 @@ import time
 import threading
 import logging
 import _thread
+import select
 
 SDN_CONTROLLER_ADDRESS = '10.0.254.1' 
 SDN_CONTROLLER_PORT = 14323
 TICK_TIME = 1
+MAP_EVRY_CNTR = 7
 
 class RootNode(threading.Thread):
     def __init__(self, evntObj, cachLck, cache):
@@ -30,11 +32,11 @@ class RootNode(threading.Thread):
                 try:
                     with self.rootLck:
                         _rcvData = str(self.rootCon.recv(1024))
-                    logging.warning("[rootSend][ROOT] : _rcvData {}".format(_rcvData))
+                    logging.debug("[rootSend][ROOT] : _rcvData {}".format(_rcvData))
                     if _rcvData :
                         with self.cachLck :
                             self.cache['ctr']['sdn']['nm'] = True
-                            self.cache['ctr']['sdn']['msh'] = _rcvData
+                            self.cache['ctr']['sdn']['msg'] = _rcvData
                         # [NOTE] Not useful to process the SDN control packet in root thread. It should be processed
                         # by node thread
                         # if 'net_map_stop' in _rcvData :
@@ -66,10 +68,24 @@ class NodeUtilities:
             logging.debug("node.nodeUtilities: [_internalCounter] self.counter {}".format(self.counter))
         return   
 
+    def emptySocket(self, sock):
+    # Remove the data present on the socket
+        _input = [sock]
+        while True:
+            _inputReady, o, e = select.select(_input,[],[], 0.0)
+            if not _inputReady.__len__(): 
+                break
+            for _sck in _inputReady:
+                try:
+                    _sck.recv(123)
+                except BlockingIOError:
+                    pass
+        return
+
 class PriCtrlPlaneUnit(NodeUtilities, RootNode, threading.Thread): # order in arg list is improtant it affects the inheritence order
     # It works for only one pkt format 41c8 broadcast with long source address
     #_ctlPlnThrd   = PriCtrlPlaneUnit(evntObj=_event_obj, sockLck=_sockLck, macRwsk=l2_sock, cachLck=_cachLck, cache=_cache, rootNode=_rootNodeThrd)
-    def __init__(self, evntObj, sockLck, macRwsk, cachLck, cache, macAdrs=None, pktBffr=b'\x41\xc8\x00\xff\xff\xff\xff', rcvdPkt=None, nodeType='ccn', rootNode=None) :
+    def __init__(self, evntObj, sockLck, macRwsk, cachLck, cache, macAdrs=None, pktBffr=b'\x41\xc8\x00\xff\xff\xff\xff', rcvdPkt=[], nodeType='ccn', rootNode=None) :
         # Call the Thread class's init function
         threading.Thread.__init__(self)
         self.evntObj = evntObj      # Node's common clock
@@ -122,93 +138,96 @@ class PriCtrlPlaneUnit(NodeUtilities, RootNode, threading.Thread): # order in ar
             strng += str(self.__dictToSerial(dic[key]))
         return strng
 
-    def _recvProcess(self):
-        self.rcvdPkt = None
+    def _recvProcess(self, log=False, clearBuffer=False):
+        # [NOTE] Create mode_setting if to simulate low node, do not use list... instead use one packet at a time
+        self.rcvdPkt = []
         # Recieve packets
-        try:
-            with self.sockLck:
-                self.rcvdPkt = self.macRwsk.recvfrom(123)
-            logging.info('[_recvProcess][RCVD][PKT] : {}'.format(self.rcvdPkt))
-        except BlockingIOError:
-            pass
+        with self.sockLck:
+            try:
+                while True:
+                    self.rcvdPkt.append(self.macRwsk.recvfrom(123))
+            except BlockingIOError:
+                log and logging.info('[_recvProcess][RCVD][PKT] : {}'.format(self.rcvdPkt))
+            clearBuffer and threading.Thread(target=NodeUtilities.emptySocket, args=(self, self.macRwsk)).start()
         return
 
     def _pktProcessngProcess(self):
-        _valHolder = [ False, ] 
-        """ Recevied message validity flags 
-            [0] -> Valid conn req flag
-            [1] -> Hold SDN msg
-        """
-        _tmpHld = str(self.rcvdPkt[0]).split('>')
-        logging.debug('[_pktProcessngProcess][PKT] : {}'.format(_tmpHld))
-        
-        for index in range(1, _tmpHld.__len__() - 1, 2): # Processing each attribute at a time for now
-            _attribute = _tmpHld[index]                      # only one pair of attribute value is transmitted
-            _value = _tmpHld[index+1]
-            logging.debug('[_pktProcessngProcess][PKT] : {} {}'.format(_attribute, _value)) # Debug takes only str as argument
+        for _rcvdPkt in self.rcvdPkt :
+            _valHolder = [ False, False ] # If we have only one value, IndexError in line 173 
+            """ Recevied message validity flags 
+                [0] -> Valid conn req flag
+                [1] -> Hold SDN msg
+            """
+            _tmpHld = str(_rcvdPkt[0]).split('>')
+            logging.debug('[_pktProcessngProcess][PKT] : {}'.format(_tmpHld))
+            
+            for index in range(1, _tmpHld.__len__() - 1, 2): # Processing each attribute at a time for now
+                _attribute = _tmpHld[index]                      # only one pair of attribute value is transmitted
+                _value = _tmpHld[index+1]
+                logging.debug('[_pktProcessngProcess][PKT] : {} {}'.format(_attribute, _value)) # Debug takes only str as argument
 
-            # Connection request in packet
-            if 'con' in _attribute :
-                if int(_value[1:]) > self.nodeRnk :
-                    logging.info('[_pktProcessngProcess][CON] : {}'.format(_tmpHld[0][-2:]))
-                    _valHolder[0] = True
+                # Connection request in packet
+                if 'con' in _attribute :
+                    if int(_value[1:]) > self.nodeRnk :
+                        logging.info('[_pktProcessngProcess][CON] : {}'.format(_tmpHld[0][-2:]))
+                        _valHolder[0] = True
+                        continue
+                    
+                # New SDN message
+                if 'sdn' in _attribute and 'True' in _value:
+                    _valHolder[1] = True
                     continue
-                   
-            # New SDN message
-            if 'sdn' in _attribute :
-                _valHolder.append(True)
-                continue
- 
-            if _valHolder[0] and 'nod' in _attribute :
-                with self.cachLck :
-                    _getVal = self.cache['nod']
-                if not _getVal :
-                    self.rootNod.rootSend(payload='con_req:' + _value)
-                else :
-                    self._broadcastConnectionRequest(payload=_value)
-                continue
+    
+                if _valHolder[0] and 'nod' in _attribute :
+                    with self.cachLck :
+                        _getVal = self.cache['nod']
+                    if not _getVal :
+                        self.rootNod.rootSend(payload='con_req:' + _value)
+                    else :
+                        self._broadcastConnectionRequest(payload=_value)
+                    continue
 
-            # [NOTE] We may want process SDN message in _cacheConfigUpdation. Rantional : It makes sense there since we are al
-            # ready updating cache which holds all the node's configuration
-            if _valHolder[1] and 'rnk' in _attribute : # if we don't have _valHolder 'rnk' in _attribute contd will execute
-                if _value < self.nodeRnk :
-                     with self.lock:
-                        self.cache['ctr']['sdn']['nm']  = True
-                        self.cache['ctr']['sdn']['msg'] = _tmpHld
-                    pass
-
-            # Rank in packet
-            if 'rnk' in _attribute :
-                with self.cachLck:
-                # Rank setter
+                # [NOTE] We may want process SDN message in _cacheConfigUpdation. Rantional : It makes sense there since we are al
+                # ready updating cache which holds all the node's configuration
+                if _valHolder[1] and 'rnk' in _attribute : # if we don't have _valHolder 'rnk' in _attribute contd will execute
                     if int(_value) < self.nodeRnk :
-                        self.nodeRnk = 2 * int(_value)
-                        logging.info('[_pktProcessngProcess][SETG][RNK] : my rank is {}'.format(self.nodeRnk))
-                        self.cache['pav'][str(self.rcvdPkt[1][-1][0])] = dict(r=_value)
-                        self.cache['ctr']['rnk']['brd'] = 3 # We're going to introduce ttl-like concept
-                    # Receive down nodes' ranks                                   
-                    elif int(_value) >= self.nodeRnk :
-                        logging.info('[_pktProcessngProcess][RECV][RNK] : node {} rank {}'.format(self.rcvdPkt[1][-1][0], _value))
-                        self.cache['pav'][str(self.rcvdPkt[1][-1][0])] = dict(r=_value)
-                        logging.info('[_pktProcessngProcess][CACHE][PAV] : {}'.format(self.cache['pav']))
-                    continue
-        
-            # Network map in packet
-            if 'pav' in _attribute :
-                logging.info('[_pktProcessngProcess][RECV][PAV] : node {} lowerRank {}'.format(self.rcvdPkt[1][-1][0], _value))
-                with self.cachLck:
-                    try:    
-                        if int(self.cache['pav'][str(self.rcvdPkt[1][-1][0])]['r']) <= self.nodeRnk :
-                                continue
-                    except (KeyError, TypeError):
+                        with self.cachLck:
+                            self.cache['ctr']['sdn']['nm']  = True
+                            self.cache['ctr']['sdn']['msg'] = _tmpHld[index+3] # value is stored here
                         pass
 
-                    try:
-                        self.cache['pav'][str(self.rcvdPkt[1][-1][0])]['d'] = _value + 'D'
-                    except KeyError:
-                        self.cache['pav'][str(self.rcvdPkt[1][-1][0])] = dict(d=(_value+'D'))
-                    logging.debug('[_pktProcessngProcess][CACHE][PAV] : {}'.format(self.cache['pav']))
-                continue
+                # Rank in packet
+                if 'rnk' in _attribute :
+                    with self.cachLck:
+                    # Rank setter
+                        if int(_value) < self.nodeRnk :
+                            self.nodeRnk = 2 * int(_value)
+                            logging.info('[_pktProcessngProcess][SETG][RNK] : my rank is {}'.format(self.nodeRnk))
+                            self.cache['pav'][str(_rcvdPkt[1][-1][0])] = dict(r=_value)
+                            self.cache['ctr']['rnk']['brd'] = 3 # We're going to introduce ttl-like concept
+                        # Receive down nodes' ranks                                   
+                        elif int(_value) >= self.nodeRnk :
+                            logging.info('[_pktProcessngProcess][RECV][RNK] : node {} rank {}'.format(_rcvdPkt[1][-1][0], _value))
+                            self.cache['pav'][str(_rcvdPkt[1][-1][0])] = dict(r=_value)
+                            logging.info('[_pktProcessngProcess][CACHE][PAV] : {}'.format(self.cache['pav']))
+                        continue
+            
+                # Network map in packet
+                if 'pav' in _attribute :
+                    logging.info('[_pktProcessngProcess][RECV][PAV] : node {} lowerRank {}'.format(_rcvdPkt[1][-1][0], _value))
+                    with self.cachLck:
+                        try:    
+                            if int(self.cache['pav'][str(_rcvdPkt[1][-1][0])]['r']) <= self.nodeRnk :
+                                    continue
+                        except (KeyError, TypeError):
+                            pass
+
+                        try:
+                            self.cache['pav'][str(_rcvdPkt[1][-1][0])]['d'] = _value + 'D'
+                        except KeyError:
+                            self.cache['pav'][str(_rcvdPkt[1][-1][0])] = dict(d=(_value+'D'))
+                        logging.debug('[_pktProcessngProcess][CACHE][PAV] : {}'.format(self.cache['pav']))
+                    continue
 
         return
 
@@ -229,6 +248,7 @@ class PriCtrlPlaneUnit(NodeUtilities, RootNode, threading.Thread): # order in ar
         try:
             with self.sockLck:
                 _totalBytes = self.macRwsk.send(self.pktBffr + self.macAdrs + b'>pav>' + bytes(self.__dictToSerial(_cachPav), 'utf8') + b'>')
+            logging.debug(self.__dictToSerial(_cachPav))
             logging.info('[_broadcastNetMap][SENT][PKT] : Total sent {} bytes'.format(_totalBytes))
 
             # Sending the network map towards controller
@@ -237,7 +257,7 @@ class PriCtrlPlaneUnit(NodeUtilities, RootNode, threading.Thread): # order in ar
             if not _getVal :
                 self.rootNod.rootSend('net_map:' + self.__dictToSerial(_cachPav))
         except OSError:
-            logging.debug(self.__dictToSerial(_cachPav))
+            logging.warning(self.__dictToSerial(_cachPav))
         return
 
     def _broadcastConnectionRequest(self, payload=''):
@@ -256,22 +276,26 @@ class PriCtrlPlaneUnit(NodeUtilities, RootNode, threading.Thread): # order in ar
         return
 
     def _cachConfigUpdation(self):
-        # with self.cachLck:
-            # if self.cache['ctr']['dwn_sdn_msg']['ctMng_on_off'] :
-            #     if self.cache['ctr']['dwn_sdn_msg']['ctMng_on_off'] == 2:
-            #         self.cache['ctr']['rnk']['m_brd'] = False
-            #         self.cache['ctr']['con']['brd'] = True
-            #     elif self.cache['ctr']['dwn_sdn_msg']['ctMng_on_off'] == 1 :
-            #         self.cache['ctr']['rnk']['m_brd'] = False
-            #         self.cache['ctr']['con']['brd'] = True
-                # Propagating down the new sdn msg
-                self._broadcastProcess(self.pktBffr + self.macAdrs + bytes('>d_sdn_m>1>rnk>{}'.format(self.nodeRnk), 'utf8'))
-            else :
-                pass
+        _getVal = []
+        with self.cachLck:
+            _getVal.append(self.cache['ctr']['sdn']['nm'])
+            _getVal.append(self.cache['ctr']['sdn']['msg'])
+            # [NOTE] Write logic to process the type of SDN message
+            # Clear the retrieved SDN message
+            self.cache['ctr']['sdn']['nm'] = False
+            self.cache['ctr']['rnk']['brd'] = False
+            self.cache['ctr']['rnk']['m_brd'] = False
+            _getVal.append(True) # Clear_flag for the remaining data in the socket
+        if _getVal[0] :
+            logging.warning("[_cachConfigUpdation] : _rcvData {}".format(_getVal[1]))
+            self._broadcastProcess(self.pktBffr + self.macAdrs + bytes('>sdn>True' + '>rnk>' + str(self.nodeRnk) + '>msg>' + _getVal[1] + '>' , 'utf8'))
+        if _getVal[2] :
+            with self.sockLck :
+                threading.Thread(target=NodeUtilities.emptySocket, args=(self, self.macRwsk)).start()
         return
 
-    # Change logWmsg to control logging in this function
-    def run(self, logWmsg=True):
+    # Change log to control logging in this function
+    def run(self, log=False):
         _sendBuffer = self.pktBffr + self.macAdrs + bytes('>rnk>', 'utf8')
         # Root node
         with self.cachLck :
@@ -292,10 +316,13 @@ class PriCtrlPlaneUnit(NodeUtilities, RootNode, threading.Thread): # order in ar
                 _getVal = self.cache['ctr']['rcv'] 
             if _getVal :
                 self._recvProcess()
-                logWmsg and logging.warning('[run] Receiving...')
+                #log and logging.warning('[run] Receiving...')
                 # Received packet processing
-                if self.rcvdPkt :
+                if self.rcvdPkt.__len__() :
                     self._pktProcessngProcess()
+
+            # Wait for next tick
+            self.evntObj.wait(10)
 
             # Broadcast rank
             _getVal = None
@@ -303,10 +330,7 @@ class PriCtrlPlaneUnit(NodeUtilities, RootNode, threading.Thread): # order in ar
                 _getVal = self.cache['ctr']['rnk']['brd'] and self.cache['ctr']['rnk']['m_brd']
             if _getVal :
                 self._broadcastProcess(_sendBuffer)
-                logWmsg and logging.warning('[run] Broadcasting Rank...')
-
-            # Wait for next tick
-            self.evntObj.wait(10)
+                log and logging.warning('[run] Broadcasting Rank...')
 
             # Process new configuration
             # [COMPLETED] should set a flag if I need to process this time can either from root thread or pkt processing function
@@ -322,7 +346,7 @@ class PriCtrlPlaneUnit(NodeUtilities, RootNode, threading.Thread): # order in ar
                 _getVal = self.cache['ctr']['con']['brd']
             if _getVal and self.nodeRnk != 254 :
                 self._broadcastConnectionRequest()
-                logWmsg and logging.warning('[run] Broadcasting Connection Request...')
+                log and logging.warning('[run] Broadcasting Connection Request...')
             
             # Broadcast network map
             _getVal = []
@@ -330,12 +354,12 @@ class PriCtrlPlaneUnit(NodeUtilities, RootNode, threading.Thread): # order in ar
                 _getVal.append(self.cache['ctr']['rnk']['m_brd'])
                 if _getVal[0] :
                     _getVal.append(str(self.cache['pav']).__len__())
-            if _getVal[0] and _getVal[1] != self.lenCachePav and not self.counter % 3 :
+            if _getVal[0] and ( _getVal[1] != self.lenCachePav or not self.counter % MAP_EVRY_CNTR ) :
                 self.lenCachePav = _getVal[1]
                 with self.cachLck: 
                     logging.debug('[run] Broadcasting Map: self.cache[\'pav\'] {}'.format(self.cache['pav']))
                 self._broadcastNetMap()
-                logWmsg and logging.warning('[run] Broadcasting Network Map...')
+                log and logging.warning('[run] Broadcasting Network Map...')
         return
 
 class PriDataPlaneUnit(threading.Thread, NodeUtilities):

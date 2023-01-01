@@ -1,0 +1,93 @@
+*  credit : PiCCN for following their model in implementation. They couldn't be used directly due to absence of link layer or wire format for IEE 802.15.4.
+** credit : NDN TLV 0.3 format (https://named-data.net/doc/NDN-packet-spec/current/intro.html  last visited 27-Dec-22)
+
+------------------------------------------------
+HEADERS
+
+#Bytes	hex(0xXX)	Description of the Octet
+------------------------------------------------
+
+	Data = DATA-TYPE TLV-LENGTH
+		 Name		[*]
+		 [MetaInfo]	[ ]
+		 [Content]	[*]
+		 DataSignature	[*]
+
+	>> Start of Data packet TLV
+	
+	0x06 		Data_type
+	0x0B 		Data_length
+
+Data_value: {
+
+	>>> Start of TLV-format for Name TLV
+
+	/* Name = NAME-TYPE TLV-LENGTH *NameComponent
+
+	NameComponent = GenericNameComponent (Used) /
+		        ImplicitSha256DigestComponent /
+		        ParametersSha256DigestComponent /
+		        OtherTypeComponent
+	*/
+
+01	0x07 		Name_type
+
+	note: Name of WSN node (NodeID and each node has only temperature sensor in our consideration, in our initial experimentatal setup, so following data directly conforms to temperature value)).
+	
+02	0x03 		Name_length
+	
+	Name_value: {
+	
+	// GenericNameComponent = GENERIC-NAME-COMPONENT-TYPE TLV-LENGTH *OCTET
+
+03	       0x08 	GenericNameComponent_type
+04	        0x01 	GenericNameComponent_length
+05	0x00 - 0xFF 	GenericNameComponent_Value
+
+	note: No. of nodes to be experimented is lesser than 255 nodes used, so the ID would be lesser than 255.
+
+	}
+
+	>>> Start of TLV-format for Content TLV
+	
+	note: MetaInfo is avoided. Within Metadata fields, 'content type' has been avoided because of homogenous sensory data. FreshnessPeriod shall be used in future by manipulation of control plane of the SDN controller. FinalBlockID is avoided since only non-fragmented data samples are used.
+
+	// Content = CONTENT-TYPE TLV-LENGTH *OCTET
+	
+06	0x15 		Content_type
+07	0x01 		Content_length
+08	0x00 - 0xFF 	Content_value
+	
+	>>> Start of TLV-format for Signature Component
+	
+	/* Content = CONTENT-TYPE TLV-LENGTH *OCTET
+	SignatureInfo = SIGNATURE-INFO-TYPE TLV-LENGTH
+                  SignatureType
+                  [KeyLocator] */
+	
+09	0x16 		signature-info_type
+0A	0x01 		signature-info_length
+0B	0xFF		signature-info_value
+
+	note: Since signing has been disabled in 15.4 network, following encoding shall be ignored (refer below noteA).
+
+	// SignatureValue = SIGNATURE-VALUE-TYPE TLV-LENGTH *OCTET
+	
+0C	0x17		signature-value_type
+0D	0x01		signature-value_length
+0E	0x00		signature-value_value
+
+}
+	noteA: sha256 produces 64 bytes of hash signatures which occupies signifacant portion of 100-octet payload in 15.4 wire format rendering it unusable. So, signing has been diasbled for research purposes. It has been indicated with usage of 0xFF (unassigned signing type). However, for future research purposes in data integrity and provenance, it can be enabled for single octet name and single octet content networking (refer noteB).
+
+	noteB: In simple, single octet sensory data carrying WSN nodes. We can consider augmenting the 64-byte hashing string. With multiple sources of identical data traversing through the NDN network, we could identify any anamolies in data integration.
+	
+	In conclusion, 
+		the resulting NDN-TLV formatting for a single octet named and single octet data content would be ...
+	
+			| Data   | Name   | N.value || Content | Signature | |
+	  		060B     0703     0801 XX    1501 XX   1601   FF
+	
+			060D07030801XX1401XX1601FF
+
+	

@@ -1,0 +1,212 @@
+priyan@priyan-VirtualBox:~/github-repo-offline/sdn-iot-ip-icn$ cd hetnet-gw/scripts/
+priyan@priyan-VirtualBox:~/github-repo-offline/sdn-iot-ip-icn/hetnet-gw/scripts$ la
+wifi-IP.py
+priyan@priyan-VirtualBox:~/github-repo-offline/sdn-iot-ip-icn/hetnet-gw/scripts$ python3 wifi-IP.py 
+priyan@priyan-VirtualBox:~/github-repo-offline/sdn-iot-ip-icn/hetnet-gw/scripts$ python3 wifi-IP.py 
+*** Mininet must run as root.
+priyan@priyan-VirtualBox:~/github-repo-offline/sdn-iot-ip-icn/hetnet-gw/scripts$ sudo python3 wifi-IP.py 
+[sudo] password for priyan: 
+*** Creating nodes
+*** Configuring Propagation Model
+*** Configuring wifi nodes
+*** Connecting to wmediumd server /var/run/wmediumd.sock
+*** Associating...
+*** Starting network
+*** Adding "iface nat0-eth0 inet manual" to /etc/network/interfaces
+*** Running CLI
+*** Starting CLI:
+mininet-wifi> ap1 ip
+Usage: ip [ OPTIONS ] OBJECT { COMMAND | help }
+       ip [ -force ] -batch filename
+where  OBJECT := { address | addrlabel | fou | help | ila | ioam | l2tp | link |
+                   macsec | maddress | monitor | mptcp | mroute | mrule |
+                   neighbor | neighbour | netconf | netns | nexthop | ntable |
+                   ntbl | route | rule | sr | tap | tcpmetrics |
+                   token | tunnel | tuntap | vrf | xfrm }
+       OPTIONS := { -V[ersion] | -s[tatistics] | -d[etails] | -r[esolve] |
+                    -h[uman-readable] | -iec | -j[son] | -p[retty] |
+                    -f[amily] { inet | inet6 | mpls | bridge | link } |
+                    -4 | -6 | -M | -B | -0 |
+                    -l[oops] { maximum-addr-flush-attempts } | -br[ief] |
+                    -o[neline] | -t[imestamp] | -ts[hort] | -b[atch] [filename] |
+                    -rc[vbuf] [size] | -n[etns] name | -N[umeric] | -a[ll] |
+                    -c[olor]}
+mininet-wifi> ap1 ip a
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+       valid_lft forever preferred_lft forever
+    inet6 ::1/128 scope host 
+       valid_lft forever preferred_lft forever
+2: enp0s3: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc fq_codel state UP group default qlen 1000
+    link/ether 08:00:27:93:37:f6 brd ff:ff:ff:ff:ff:ff
+3: enp0s8: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc fq_codel state UP group default qlen 1000
+    link/ether 08:00:27:db:af:a9 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.1.15/24 brd 192.168.1.255 scope global dynamic noprefixroute enp0s8
+       valid_lft 81460sec preferred_lft 81460sec
+    inet6 fe80::204f:428c:1310:26b1/64 scope link noprefixroute 
+       valid_lft forever preferred_lft forever
+4: hwsim0: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state DOWN group default qlen 1000
+    link/ieee802.11/radiotap 12:00:00:00:00:00 brd ff:ff:ff:ff:ff:ff
+10: ap1-wlan1: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc mq master ovs-system state UP group default qlen 1000
+    link/ether 02:00:00:00:05:00 brd ff:ff:ff:ff:ff:ff
+11: ap1-eth2@nat0-eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master ovs-system state UP group default qlen 1000
+    link/ether c6:84:6b:d3:92:9a brd ff:ff:ff:ff:ff:ff
+    inet6 fe80::c484:6bff:fed3:929a/64 scope link 
+       valid_lft forever preferred_lft forever
+12: nat0-eth0@ap1-eth2: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default qlen 1000
+    link/ether 26:2c:86:2b:6a:27 brd ff:ff:ff:ff:ff:ff
+    inet 10.0.0.6/8 brd 10.255.255.255 scope global nat0-eth0
+       valid_lft forever preferred_lft forever
+    inet6 fe80::242c:86ff:fe2b:6a27/64 scope link 
+       valid_lft forever preferred_lft forever
+13: ovs-system: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state DOWN group default qlen 1000
+    link/ether aa:54:91:78:5d:f6 brd ff:ff:ff:ff:ff:ff
+14: ap1: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state DOWN group default qlen 1000
+    link/ether 02:bb:59:4b:63:49 brd ff:ff:ff:ff:ff:ff
+mininet-wifi> sta1 ip a
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+       valid_lft forever preferred_lft forever
+    inet6 ::1/128 scope host 
+       valid_lft forever preferred_lft forever
+5: sta1-wlan0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc mq state UP group default qlen 1000
+    link/ether 02:00:00:00:00:00 brd ff:ff:ff:ff:ff:ff
+    inet 10.0.0.1/8 brd 10.255.255.255 scope global sta1-wlan0
+       valid_lft forever preferred_lft forever
+    inet6 2001::1/64 scope global 
+       valid_lft forever preferred_lft forever
+    inet6 fe80::ff:fe00:0/64 scope link 
+       valid_lft forever preferred_lft forever
+mininet-wifi> sta1 ping 10.0.0.6
+PING 10.0.0.6 (10.0.0.6) 56(84) bytes of data.
+64 bytes from 10.0.0.6: icmp_seq=1 ttl=64 time=3.35 ms
+64 bytes from 10.0.0.6: icmp_seq=2 ttl=64 time=0.807 ms
+64 bytes from 10.0.0.6: icmp_seq=3 ttl=64 time=4.08 ms
+64 bytes from 10.0.0.6: icmp_seq=4 ttl=64 time=1.65 ms
+^C
+--- 10.0.0.6 ping statistics ---
+4 packets transmitted, 4 received, 0% packet loss, time 3028ms
+rtt min/avg/max/mdev = 0.807/2.471/4.082/1.304 ms
+mininet-wifi> exit
+*** Running Test
+*** Stopping network
+*** Stopping 0 controllers
+
+*** Stopping 6 links
+......
+*** Stopping switches/access points
+ap1 
+*** Stopping nodes
+nat0 sta1 sta2 sta3 sta4 sta2 
+
+*** Removing WiFi module and Configurations
+*** Killing mac80211_hwsim
+
+*** Done
+priyan@priyan-VirtualBox:~/github-repo-offline/sdn-iot-ip-icn/hetnet-gw/scripts$ sudo python3 wifi-IP.py 
+*** Creating nodes
+*** Configuring Propagation Model
+*** Configuring wifi nodes
+*** Connecting to wmediumd server /var/run/wmediumd.sock
+*** Associating...
+*** Starting network
+*** Running CLI
+*** Starting CLI:
+mininet-wifi> exit
+*** Running Test
+*** Stopping network
+*** Stopping 0 controllers
+
+*** Stopping 6 links
+......
+*** Stopping switches/access points
+ap1 
+*** Stopping nodes
+nat0 sta1 sta2 sta3 sta4 sta2 
+
+*** Removing WiFi module and Configurations
+*** Killing mac80211_hwsim
+
+*** Done
+priyan@priyan-VirtualBox:~/github-repo-offline/sdn-iot-ip-icn/hetnet-gw/scripts$ python3 wifi-IP.py 
+*** Mininet must run as root.
+priyan@priyan-VirtualBox:~/github-repo-offline/sdn-iot-ip-icn/hetnet-gw/scripts$ sudo python3 wifi-IP.py 
+*** Creating nodes
+*** Configuring Propagation Model
+*** Configuring wifi nodes
+*** Connecting to wmediumd server /var/run/wmediumd.sock
+*** Associating...
+*** Starting network
+*** Running CLI
+*** Starting CLI:
+mininet-wifi> exit
+*** Running Test
+*** Stopping network
+*** Stopping 0 controllers
+
+*** Stopping 6 links
+......
+*** Stopping switches/access points
+ap1 
+*** Stopping nodes
+nat0 sta1 sta2 sta3 sta4 sta2 
+
+*** Removing WiFi module and Configurations
+*** Killing mac80211_hwsim
+
+*** Done
+priyan@priyan-VirtualBox:~/github-repo-offline/sdn-iot-ip-icn/hetnet-gw/scripts$ sudo python3 wifi-IP.py 
+*** Creating nodes
+*** Configuring Propagation Model
+*** Configuring wifi nodes
+*** Connecting to wmediumd server /var/run/wmediumd.sock
+*** Associating...
+*** Starting network
+*** Running CLI
+*** Starting CLI:
+mininet-wifi> exit
+*** Running Test
+*** Stopping network
+*** Stopping 0 controllers
+
+*** Stopping 6 links
+......
+*** Stopping switches/access points
+ap1 
+*** Stopping nodes
+nat0 sta1 sta2 sta3 sta4 sta2 
+
+*** Removing WiFi module and Configurations
+*** Killing mac80211_hwsim
+
+*** Done
+priyan@priyan-VirtualBox:~/github-repo-offline/sdn-iot-ip-icn/hetnet-gw/scripts$ sudo python3 wifi-IP.py 
+*** Creating nodes
+*** Configuring Propagation Model
+*** Configuring wifi nodes
+*** Connecting to wmediumd server /var/run/wmediumd.sock
+*** Associating...
+*** Starting network
+*** Running CLI
+*** Starting CLI:
+mininet-wifi> sta1 ip r
+default via 10.0.0.6 dev sta1-wlan0 
+10.0.0.0/8 dev sta1-wlan0 proto kernel scope link src 10.0.0.1 
+mininet-wifi> sta1 ping 8.8.8.8
+PING 8.8.8.8 (8.8.8.8) 56(84) bytes of data.
+64 bytes from 8.8.8.8: icmp_seq=1 ttl=55 time=27.1 ms
+64 bytes from 8.8.8.8: icmp_seq=2 ttl=55 time=33.6 ms
+64 bytes from 8.8.8.8: icmp_seq=3 ttl=55 time=43.4 ms
+64 bytes from 8.8.8.8: icmp_seq=4 ttl=55 time=47.2 ms
+^C
+--- 8.8.8.8 ping statistics ---
+4 packets transmitted, 4 received, 0% packet loss, time 3006ms
+rtt min/avg/max/mdev = 27.093/37.806/47.224/7.941 ms
+mininet-wifi> 
+
+-----------------------------------------------------
+Marked as successful outlink generation
+timestamp: tis 27 dec 2022 15:59:01 CET
+-----------------------------------------------------

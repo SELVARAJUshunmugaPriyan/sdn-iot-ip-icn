@@ -85,7 +85,7 @@ for i in `seq 0 $numberOfNodes`; do
 		ip netns exec wpan0 ip link set dev tunnel_end up
 		ip netns exec wpan0 ip a add 10.0.254.2/24 dev tunnel_end
 		# STARTING CONTROLLER
-		/home/priyan/code/sdn-iot-ip-icn/controller.py &>>/home/priyan/code/sdn-iot-ip-icn/log/controller.log &
+		#/home/priyan/code/sdn-iot-ip-icn/controller.py &>>/home/priyan/code/sdn-iot-ip-icn/log/controller.log &
 	else
 		if [ `expr "$i" % $1` != 0 ]; then
 			# East
@@ -127,5 +127,5 @@ for i in `seq 0 $numberOfNodes`; do
 			arg="$i CONN_REQ_ON $3"
 		fi
 	done
-	ip netns exec wpan$i /home/priyan/code/sdn-iot-ip-icn/node.py $arg &>>/home/priyan/code/sdn-iot-ip-icn/log/wpan$i.log &
+	#ip netns exec wpan$i /home/priyan/code/sdn-iot-ip-icn/node.py $arg &>>/home/priyan/code/sdn-iot-ip-icn/log/wpan$i.log &
 done
