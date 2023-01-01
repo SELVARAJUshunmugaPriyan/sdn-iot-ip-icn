@@ -12,9 +12,10 @@ import sys
 import time
 import binascii
 import logging
-#import datetime
 import select
 import random
+
+DATA_INTERVAL = 0.005
 
 def emptySocket(sock):
     # Remove the data present on the socket
@@ -61,7 +62,6 @@ if __name__ == "__main__" :
             level=logging.INFO,
             format=("%(asctime)s-%(levelname)s-%(filename)s-%(lineno)d "
             "%(message)s"),
-#            datefmt='%d/%m/%Y %H:%M:%S.%m'
         )
 
     l2_sock = socket.socket(socket.AF_PACKET, socket.SOCK_RAW, socket.ntohs(0x0003))
@@ -92,9 +92,5 @@ if __name__ == "__main__" :
             _cmpltSndBfr = _sndBfr + ndnPktGetter(_cache['nod'], tempVal=round(random.random() * 255))
             _tBytes = l2_sock.send(_cmpltSndBfr)
             logging.info("Total sent bytes {} - message: {} ".format(_tBytes, _cmpltSndBfr))
-        # if _rcvPkt :
-        #     _frame = _rcvPkt[0].decode('unicode-escape')
-        #     _data = [].append(format(ord(_frame[-7])), ord(_frame[-4]))
-        #     logging.info(''.format(_data))
         
-        time.sleep(10)
+        time.sleep(DATA_INTERVAL)

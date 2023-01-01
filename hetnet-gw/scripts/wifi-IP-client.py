@@ -5,7 +5,7 @@ import sys
 import time
 
 SERVER_ADDRESS = ('10.0.0.6', 65432)
-DATA_INTERVAL  = 1
+DATA_INTERVAL  = 0.005
 
 if __name__ == "__main__" :
 

@@ -33,7 +33,7 @@ def receiveFromWlan(ip80211Sock, out_q, stop):
         select([ip80211Sock], [], []) # Polling read socket
         try:
             _data, _addr = ip80211Sock.recvfrom(1024)
-            out_q.put(list(_data, _addr))
+            out_q.put(tuple((_data, _addr)))
             logging.info(f"WLAN: received {_data} from {_addr}")
         except BlockingIOError:
             pass
@@ -43,8 +43,9 @@ def receiveFromWlan(ip80211Sock, out_q, stop):
 
 def sendToWpan(ndn15_4Sock, in_q, _sndBfr, stop):
     while True:
-        select([], ndn15_4Sock, [])
-        _data = in_q.get(None)
+        logging.debug(f"WPAN: Entering Txn...")
+        select([], [ndn15_4Sock], [])
+        _data = in_q.get(True, None)
         _cmpltSndBfr = _sndBfr + ndnPktGetter(_data[0], _data[1])
         logging.debug(f"Sending {_cmpltSndBfr}")
         ndn15_4Sock.send(_cmpltSndBfr)
@@ -53,14 +54,18 @@ def sendToWpan(ndn15_4Sock, in_q, _sndBfr, stop):
 
 def sendToWlan(ip80211Sock, in_q, stop):
     while True:
-        select([], ip80211Sock, [])
-        _data = in_q.get(None)
+        logging.debug(f"WLAN: Entering Txn...")
+        select([], [ip80211Sock], [])
+        _data = in_q.get(True, None)
         logging.debug(f"Sending {_data[0]} to {_data[1]}")
         ip80211Sock.sendto(_data[0], _data[1])
         if stop():
             break
 
 def ndnIpProtoTrans():
+    pass
+
+def ipNdnProtoTrans():
     pass
 
 if __name__ == "__main__" :
@@ -106,6 +111,8 @@ if __name__ == "__main__" :
     # Thread operations
     threadWpanReception.start()
     threadWlanReception.start()
+    threadWpanTxnsmsion.start()
+    threadWlanTxnsmsion.start()
 
     try:
         while True :
