@@ -14,7 +14,7 @@ def receive(udpSock, stop):
         select([udpSock], [], [], 0.0)
         try:
             _dataRecevd = udpSock.recvfrom(1024)
-            logging.info(f"Data received: {_dataRecevd}")
+            logging.info(f"Received: {_dataRecevd[0]}")
         except BlockingIOError:
             pass
         if stop():
@@ -26,7 +26,8 @@ def send(udpSock, stop):
         for i in range(255) :
             select([], [udpSock], [], 0.0)
             _tBytesSent = udpSock.sendto(i.to_bytes(1, 'little'), SERVER_ADDRESS)
-            logging.info(f"Sending squence number: {i}. Total bytes sent: {_tBytesSent}")
+            logging.debug(f"Total bytes sent: {_tBytesSent}")
+            logging.info(f"Sending squence number: {i}")
             
             sleep(DATA_INTERVAL)
             if stop():
@@ -35,13 +36,10 @@ def send(udpSock, stop):
 if __name__ == "__main__" :
 
     logging.basicConfig(
-        filename='/home/priyan/github-repo-offline/sdn-iot-ip-icn/hetnet-gw/logs/wifi-IP/wlan{}.log'.
-            format(sys.argv[1]),
+        filename='/home/priyan/github-repo-offline/sdn-iot-ip-icn/hetnet-gw/logs/802_11_IP/WLAN_node_{}.log'.format(sys.argv[1]),
         filemode='a',
         level=logging.INFO,
-        format=("%(asctime)s-%(levelname)s-%(filename)s-%(lineno)d "
-        "%(message)s"),
-        # datefmt='%d/%m/%Y %H:%M:%S.%m'
+        format=("%(asctime)s-%(levelname)s-%(filename)s-%(lineno)d %(message)s"),
         )
 
     _stopThreads = False

@@ -50,11 +50,11 @@ def topology():
     ap1.cmd("echo 1 > /proc/sys/net/ipv4/ip_forward")
 
     info("*** Running User commands\n")
-    sta1.cmd(f"{BASE_DIR}scripts/wifi-IP-client.py 1 &")   # Change Destination and AP IP address ( ... is usually +1 to # of sta nodes)
-    sta2.cmd(f"{BASE_DIR}scripts/wifi-IP-client.py 2 &")   # Not needed default route has been set to AP
-    sta3.cmd(f"{BASE_DIR}scripts/wifi-IP-client.py 3 &")
-    sta4.cmd(f"{BASE_DIR}scripts/wifi-IP-client.py 4 &")
-    sta5.cmd(f"{BASE_DIR}scripts/wifi-IP-client.py 5 &")
+    sta1.cmd(f"{BASE_DIR}scripts/802_11_IP_CL.py 1 &")   # Change Destination and AP IP address ( ... is usually +1 to # of sta nodes)
+    sta2.cmd(f"{BASE_DIR}scripts/802_11_IP_CL.py 2 &")   # Not needed default route has been set to AP
+    sta3.cmd(f"{BASE_DIR}scripts/802_11_IP_CL.py 3 &")
+    sta4.cmd(f"{BASE_DIR}scripts/802_11_IP_CL.py 4 &")
+    sta5.cmd(f"{BASE_DIR}scripts/802_11_IP_CL.py 5 &")
 
     info("*** Running CLI\n")
     CLI(net)

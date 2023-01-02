@@ -49,7 +49,7 @@ def receive(devStat, drpPrcnt, l2_sock, nodeId, stop):
                     _data = [ ord(_frame[x]) for x in (-7, -4) ]
                     logging.debug('Received for {}. Data: {}'.format(_data[0], _data[1]))
                     if _data[0] == int(nodeId) :
-                        logging.info('Received for {}. Data: {}'.format(_data[0], _data[1]))
+                        logging.info(f'Received: {_data[1]}')
                 except BlockingIOError:
                     pass
                 except IndexError:
@@ -65,7 +65,8 @@ def send(commStat, drpPrcnt, sndBfr, nodeID, l2_sock, stop):
             _cmpltSndBfr = sndBfr + ndnPktGetter(nodeID, tempVal=round(random() * 255))
             select([],[l2_sock],[], 0.0)
             _tBytes = l2_sock.send(_cmpltSndBfr)
-            logging.info("Total sent bytes {} - message: {} ".format(_tBytes, _cmpltSndBfr))
+            logging.debug(f"Total sent bytes {_tBytes}")
+            logging.info(f"Sending random squence: {_cmpltSndBfr[24:25]}")
 
         sleep(DATA_INTERVAL)
         if stop():
@@ -93,6 +94,14 @@ if __name__ == "__main__" :
     except IndexError :
         raise Exception("No value given for the node ID")
 
+    if _cache['nod'] :
+        logging.basicConfig(
+            filename='/home/priyan/github-repo-offline/sdn-iot-ip-icn/hetnet-gw/logs/802_15_4_CCN/WPAN_node_{}.log'.format(_cache['nod']),
+            filemode='a',
+            level=logging.INFO,
+            format=("%(asctime)s-%(levelname)s-%(filename)s-%(lineno)d %(message)s"),
+        )
+
     # Retreiving loss percentage
     try:
         _cache['drp'] = int(sys.argv[2])    # Loss percentage
@@ -100,22 +109,11 @@ if __name__ == "__main__" :
         logging.warning("Incorrect value for loss percentage")
     except IndexError :
         logging.warning("No value given for loss percentage")
-    
-    
-    if _cache['nod'] :
-        logging.basicConfig(
-            filename='/home/priyan/github-repo-offline/sdn-iot-ip-icn/hetnet-gw/logs/15_4-ccn/wpan{}.log'.
-                format(_cache['nod']),
-            filemode='a',
-            level=logging.INFO,
-            format=("%(asctime)s-%(levelname)s-%(filename)s-%(lineno)d "
-            "%(message)s"),
-        )
 
     l2_sock = socket.socket(socket.AF_PACKET, socket.SOCK_RAW, socket.ntohs(0x0003))
     l2_sock.bind(('wpan{}'.format(_cache['nod']), 0, socket.PACKET_BROADCAST))
     l2_sock.setblocking(0)
-    logging.info('l2_socket established')
+    logging.debug('l2_socket established')
 
     with open('/sys/class/net/wpan{}/address'.format(_cache['nod']), 'r') as f :
             _strng = f.readline()
