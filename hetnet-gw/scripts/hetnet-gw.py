@@ -161,11 +161,11 @@ if __name__ == "__main__" :
 
     try:
         while True :
-            sleep(1)
+            sleep(1)            # Need a proper program shutdown
     except KeyboardInterrupt:
         ndn15_4Sock.close()
         ip80211Sock.close()
-        stopThreads = False
+        stopThreads = True
         # Thread operations
         for i in _openedThreads :
             i.join()

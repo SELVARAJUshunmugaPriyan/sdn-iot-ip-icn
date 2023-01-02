@@ -2,10 +2,35 @@
 import socket
 import logging
 import sys
-import time
+from time import sleep
+from threading import Thread
+from select import select
 
 SERVER_ADDRESS = ('10.0.0.6', 65432)
 DATA_INTERVAL  = 10
+
+def receive(udpSock, stop):
+    while True:
+        select([udpSock], [], [], 0.0)
+        try:
+            _dataRecevd = udpSock.recvfrom(1024)
+            logging.info(f"Data received: {_dataRecevd}")
+        except BlockingIOError:
+            pass
+        if stop():
+            break
+    return
+
+def send(udpSock, stop):
+    while True :
+        for i in range(255) :
+            select([], [udpSock], [], 0.0)
+            _tBytesSent = udpSock.sendto(i.to_bytes(1, 'little'), SERVER_ADDRESS)
+            logging.info(f"Sending squence number: {i}. Total bytes sent: {_tBytesSent}")
+            
+            sleep(DATA_INTERVAL)
+            if stop():
+                return
 
 if __name__ == "__main__" :
 
@@ -18,20 +43,20 @@ if __name__ == "__main__" :
         "%(message)s"),
         # datefmt='%d/%m/%Y %H:%M:%S.%m'
         )
-    time.sleep(5)
-    logging.info(f"Starting UDP connection")
-    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as udpSock :
-        udpSock.setblocking(0)
-        logging.debug(f"Socket Created")
-        while True :
-            for i in range(255) :
-                logging.info(f"Sending squence number: {i}")
-                _tBytesSent = udpSock.sendto(i.to_bytes(1, 'little'), SERVER_ADDRESS)
-                logging.info(f"Total bytes sent: {_tBytesSent}")
-                try:
-                    _dataRecevd = udpSock.recvfrom(1024)
-                    logging.info(f"Data received: {_dataRecevd}")
-                except BlockingIOError:
-                    pass
 
-                time.sleep(DATA_INTERVAL)
+    _stopThreads = False
+
+    logging.debug(f"Starting UDP connection")
+    udpSock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    udpSock.setblocking(0)
+    logging.debug(f"Socket Created")
+    
+    Thread(target=receive, args=(udpSock, lambda : _stopThreads)).start()
+    Thread(target=send, args=(udpSock, lambda : _stopThreads)).start()
+
+    try:
+        while True:
+            sleep(1)
+    except KeyboardInterrupt:
+        udpSock.close()
+        _stopThreads = True
