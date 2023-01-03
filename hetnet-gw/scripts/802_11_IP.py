@@ -9,7 +9,7 @@ from mn_wifi.net import Mininet_wifi
 from mn_wifi.link import wmediumd, adhoc
 from mn_wifi.wmediumdConnector import interference
 
-BASE_DIR = "/home/priyan/github-repo-offline/sdn-iot-ip-icn/hetnet-gw/"
+BASE_DIR = "/home/priyan/code/githubRepoOffline/sdn-iot-ip-icn/hetnet-gw/"
 
 def topology():
     "Create a network."

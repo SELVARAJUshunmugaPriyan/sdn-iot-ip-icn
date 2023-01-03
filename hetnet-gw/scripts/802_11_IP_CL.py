@@ -7,7 +7,7 @@ from threading import Thread
 from select import select
 
 SERVER_ADDRESS = ('10.0.0.6', 65432)
-DATA_INTERVAL  = 10
+DATA_INTERVAL  = 0.1
 
 def receive(udpSock, stop):
     while True:
@@ -36,7 +36,7 @@ def send(udpSock, stop):
 if __name__ == "__main__" :
 
     logging.basicConfig(
-        filename='/home/priyan/github-repo-offline/sdn-iot-ip-icn/hetnet-gw/logs/802_11_IP/WLAN_node_{}.log'.format(sys.argv[1]),
+        filename='/home/priyan/code/githubRepoOffline/sdn-iot-ip-icn/hetnet-gw/logs/802_11_IP/WLAN_node_{}.log'.format(sys.argv[1]),
         filemode='a',
         level=logging.INFO,
         format=("%(asctime)s-%(levelname)s-%(filename)s-%(lineno)d %(message)s"),

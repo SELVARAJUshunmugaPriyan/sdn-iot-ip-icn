@@ -16,7 +16,7 @@ from select import select
 from random import random
 from threading import Thread
 
-DATA_INTERVAL = 10
+DATA_INTERVAL = 0.1
 
 def emptySocket(sock):
     # Remove the data present on the socket
@@ -96,7 +96,7 @@ if __name__ == "__main__" :
 
     if _cache['nod'] :
         logging.basicConfig(
-            filename='/home/priyan/github-repo-offline/sdn-iot-ip-icn/hetnet-gw/logs/802_15_4_CCN/WPAN_node_{}.log'.format(_cache['nod']),
+            filename='/home/priyan/code/githubRepoOffline/sdn-iot-ip-icn/hetnet-gw/logs/802_15_4_CCN/WPAN_node_{}.log'.format(_cache['nod']),
             filemode='a',
             level=logging.INFO,
             format=("%(asctime)s-%(levelname)s-%(filename)s-%(lineno)d %(message)s"),

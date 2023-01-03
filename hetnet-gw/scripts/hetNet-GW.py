@@ -107,7 +107,7 @@ if __name__ == "__main__" :
     _openedThreads = []
 
     logging.basicConfig(
-        filename='/home/priyan/github-repo-offline/sdn-iot-ip-icn/hetnet-gw/logs/HetNet_GW/HetNet_GW.log',
+        filename='/home/priyan/code/githubRepoOffline/sdn-iot-ip-icn/hetnet-gw/logs/HetNet_GW/HetNet_GW.log',
         filemode='a',
         level=logging.INFO,
         format=("%(asctime)s-%(levelname)s-%(filename)s-%(lineno)d "

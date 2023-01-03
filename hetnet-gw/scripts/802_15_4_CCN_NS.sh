@@ -44,7 +44,7 @@ for i in `seq 1 $1`; do
     ip netns exec wpan$i iwpan dev wpan$i set pan_id 0xbeef
     ip netns exec wpan$i ip link set dev wpan$i up
 
-    ip netns exec wpan$i sudo python3 /home/priyan/github-repo-offline/sdn-iot-ip-icn/hetnet-gw/scripts/802_15_4_CCN.py $i $lossPercentage &>>/dev/null &
+    ip netns exec wpan$i sudo python3 /home/priyan/code/githubRepoOffline/sdn-iot-ip-icn/hetnet-gw/scripts/802_15_4_CCN.py $i $lossPercentage &>>/dev/null &
 
 done
 
