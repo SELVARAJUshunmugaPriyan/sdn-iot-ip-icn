@@ -5,9 +5,10 @@ import sys
 from time import sleep
 from threading import Thread
 from select import select
+from random import random
 
 SERVER_ADDRESS = ('10.0.0.6', 65432)
-DATA_INTERVAL  = 0.1
+DATA_INTERVAL  = 0.001
 
 def receive(udpSock, stop):
     while True:
@@ -23,15 +24,15 @@ def receive(udpSock, stop):
 
 def send(udpSock, stop):
     while True :
-        for i in range(255) :
-            select([], [udpSock], [], 0.0)
-            _tBytesSent = udpSock.sendto(i.to_bytes(1, 'little'), SERVER_ADDRESS)
-            logging.debug(f"Total bytes sent: {_tBytesSent}")
-            logging.info(f"Sending squence number: {i}")
-            
-            sleep(DATA_INTERVAL)
-            if stop():
-                return
+        select([], [udpSock], [], 0.0)
+        _seqByts = int(random() * 255).to_bytes(1, 'little')
+        _tBytesSent = udpSock.sendto(_seqByts, SERVER_ADDRESS)
+        logging.debug(f"Total bytes sent: {_tBytesSent}")
+        logging.info(f"Sending random squence: {_seqByts}")
+        
+        sleep(DATA_INTERVAL)
+        if stop():
+            return
 
 if __name__ == "__main__" :
 

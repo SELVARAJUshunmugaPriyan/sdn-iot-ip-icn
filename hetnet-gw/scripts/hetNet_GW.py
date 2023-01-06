@@ -12,6 +12,18 @@ AP_PT_ADDRESS_EGRESS_WLAN = 65432
 WPAN_DEV_ID               = 0
 WLAN_CLIENT_PORT_ADDRESS  = {}
 
+def emptySocket(sock, bfrSize):
+    # Remove the data present on the socket
+    while True:
+        _inputReady, o, e = select([sock],[],[], 0.0)
+        if not _inputReady.__len__(): 
+            break
+        try:
+            sock.recv(bfrSize)
+        except BlockingIOError:
+            pass
+    return
+
 def ndnPktGetter(nodeID, tempVal):
     try:
         nodeID = int(nodeID).to_bytes(1, 'little')
@@ -22,33 +34,37 @@ def ndnPktGetter(nodeID, tempVal):
 
 def receiveFromWpan(ndn15_4Sock, out_q, stop):
     while True :
-        select([ndn15_4Sock], [], []) # Polling read socket
-        try :
-            _rcvPkt = ndn15_4Sock.recvfrom(123)
-            _frame = _rcvPkt[0].decode('unicode-escape')
-            _data = [ ord(_frame[x]) for x in (-7, -4) ]                # data[0] = Sender Name in NDN, data[1] = data
-            logging.info(f"WPAN: received {_data[1]} from {_data[0]}")
-            out_q.put(_data)
-        except BlockingIOError:
-            pass
+        while not out_q.full() :
+            select([ndn15_4Sock], [], []) # Polling read socket
+            try :
+                _rcvPkt = ndn15_4Sock.recvfrom(123)
+                _frame = _rcvPkt[0].decode('unicode-escape')
+                _data = [ ord(_frame[x]) for x in (-7, -4) ]                # data[0] = Sender Name in NDN, data[1] = data
+                logging.info(f"WPAN: received {_data[1]} from {_data[0]}")
+                out_q.put(_data)
+                emptySocket(ndn15_4Sock, 123)
+            except BlockingIOError:
+                pass
         if stop():
             break
     return
 
 def receiveFromWlan(ip80211Sock, out_q, stop):
     while True :
-        select([ip80211Sock], [], []) # Polling read socket
-        try:
-            _data, _addr = ip80211Sock.recvfrom(1024)
-            out_q.put(tuple((_data, _addr)))
-            logging.info(f"WLAN: received {_data} from {_addr}")
+        while not out_q.full() :
+            select([ip80211Sock], [], []) # Polling read socket
             try:
-                if WLAN_CLIENT_PORT_ADDRESS[_addr[0][-1]] :
-                    pass
-            except KeyError :
-                WLAN_CLIENT_PORT_ADDRESS[_addr[0][-1]] = _addr[1]
-        except BlockingIOError:
-            pass
+                _data, _addr = ip80211Sock.recvfrom(1024)
+                out_q.put(tuple((_data, _addr)))
+                logging.info(f"WLAN: received {_data} from {_addr}")
+                try:
+                    if WLAN_CLIENT_PORT_ADDRESS[_addr[0][-1]] :
+                        pass
+                except KeyError :
+                    WLAN_CLIENT_PORT_ADDRESS[_addr[0][-1]] = _addr[1]
+                emptySocket(ip80211Sock, 1024)
+            except BlockingIOError:
+                pass
         if stop():
             break
     return
@@ -107,9 +123,9 @@ if __name__ == "__main__" :
     _openedThreads = []
 
     logging.basicConfig(
-        filename='/home/priyan/github-repo-offline/sdn-iot-ip-icn/hetnet-gw/logs/h_gw/h_gw.log',
+        filename='/home/priyan/code/githubRepoOffline/sdn-iot-ip-icn/hetnet-gw/logs/HetNet_GW/HetNet_GW.log',
         filemode='a',
-        level=logging.DEBUG,
+        level=logging.INFO,
         format=("%(asctime)s-%(levelname)s-%(filename)s-%(lineno)d "
         "%(message)s"),
     )
@@ -131,9 +147,9 @@ if __name__ == "__main__" :
 
     # Individual Queue Creation
     wpanEgfrmPtQueue = Queue()
-    wpanEgfrmWlanQueue = Queue()
+    wpanEgfrmWlanQueue = Queue(10)
     wlanEgfrmPtQueue = Queue()
-    wlanEgfrmWpanQueue = Queue()
+    wlanEgfrmWpanQueue = Queue(10)
 
     # Individual Thread Creation
     # 15.4 -> wlanEgfrmWpanQueue       -> ndnIP pt ->      wlanEgfrmPtQueue -> 802.11
@@ -161,11 +177,11 @@ if __name__ == "__main__" :
 
     try:
         while True :
-            sleep(1)
+            sleep(1)            # Need a proper program shutdown
     except KeyboardInterrupt:
         ndn15_4Sock.close()
         ip80211Sock.close()
-        stopThreads = False
+        stopThreads = True
         # Thread operations
         for i in _openedThreads :
             i.join()

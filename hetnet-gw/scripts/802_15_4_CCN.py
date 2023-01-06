@@ -16,7 +16,7 @@ from select import select
 from random import random
 from threading import Thread
 
-DATA_INTERVAL = 0.1
+DATA_INTERVAL = 0.001
 
 def emptySocket(sock):
     # Remove the data present on the socket
@@ -49,7 +49,7 @@ def receive(devStat, drpPrcnt, l2_sock, nodeId, stop):
                     _data = [ ord(_frame[x]) for x in (-7, -4) ]
                     logging.debug('Received for {}. Data: {}'.format(_data[0], _data[1]))
                     if _data[0] == int(nodeId) :
-                        logging.info(f'Received: {_data[1]}')
+                        logging.info(f"Received: {_data[1].to_bytes(1, 'big')}")
                 except BlockingIOError:
                     pass
                 except IndexError:
