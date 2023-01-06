@@ -7,8 +7,9 @@ from threading import Thread
 from select import select
 from random import random
 
-SERVER_ADDRESS = ('10.0.0.6', 65432)
+SERVER_ADDRESS = ('10.0.0.2', 65432)
 DATA_INTERVAL  = 0.001
+UDP_PORT       = 65433
 
 def receive(udpSock, stop):
     while True:
@@ -47,11 +48,12 @@ if __name__ == "__main__" :
 
     logging.debug(f"Starting UDP connection")
     udpSock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    udpSock.bind(("", UDP_PORT))
     udpSock.setblocking(0)
     logging.debug(f"Socket Created")
     
     Thread(target=receive, args=(udpSock, lambda : _stopThreads)).start()
-    Thread(target=send, args=(udpSock, lambda : _stopThreads)).start()
+    # Thread(target=send, args=(udpSock, lambda : _stopThreads)).start()
 
     try:
         while True:

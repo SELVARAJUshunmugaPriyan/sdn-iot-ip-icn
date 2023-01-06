@@ -7,10 +7,10 @@ from select     import select
 from queue      import Queue
 from threading  import Thread
 
-AP_IP_ADDRESS_EGRESS_WLAN = '10.0.0.6'
+AP_IP_ADDRESS_EGRESS_WLAN = '10.0.0.2'
 AP_PT_ADDRESS_EGRESS_WLAN = 65432
 WPAN_DEV_ID               = 0
-WLAN_CLIENT_PORT_ADDRESS  = {}
+WLAN_CLIENT_PORT_ADDRESS  = 65433
 
 def emptySocket(sock, bfrSize):
     # Remove the data present on the socket
@@ -57,11 +57,11 @@ def receiveFromWlan(ip80211Sock, out_q, stop):
                 _data, _addr = ip80211Sock.recvfrom(1024)
                 out_q.put(tuple((_data, _addr)))
                 logging.info(f"WLAN: received {_data} from {_addr}")
-                try:
-                    if WLAN_CLIENT_PORT_ADDRESS[_addr[0][-1]] :
-                        pass
-                except KeyError :
-                    WLAN_CLIENT_PORT_ADDRESS[_addr[0][-1]] = _addr[1]
+                # try:
+                #     if WLAN_CLIENT_PORT_ADDRESS[_addr[0][-1]] :
+                #         pass
+                # except KeyError :
+                #     WLAN_CLIENT_PORT_ADDRESS[_addr[0][-1]] = _addr[1]
                 emptySocket(ip80211Sock, 1024)
             except BlockingIOError:
                 pass
@@ -98,8 +98,11 @@ def ndnIpProtoTrans(in_q, out_q, stop):                    # NDN Name to IP Addr
         _data[0] = str(_data[0])
         try:
             out_q.put(
+                # tuple((_data[1].to_bytes(1, 'little'),
+                #     tuple(('10.0.0.' + _data[0], WLAN_CLIENT_PORT_ADDRESS[_data[0]]))
+                # ))
                 tuple((_data[1].to_bytes(1, 'little'),
-                    tuple(('10.0.0.' + _data[0], WLAN_CLIENT_PORT_ADDRESS[_data[0]]))
+                    tuple(('10.0.0.' + _data[0], WLAN_CLIENT_PORT_ADDRESS))
                 ))
             )
         except KeyError :
@@ -125,7 +128,7 @@ if __name__ == "__main__" :
     logging.basicConfig(
         filename='/home/priyan/code/githubRepoOffline/sdn-iot-ip-icn/hetnet-gw/logs/HetNet_GW/HetNet_GW.log',
         filemode='a',
-        level=logging.INFO,
+        level=logging.DEBUG,
         format=("%(asctime)s-%(levelname)s-%(filename)s-%(lineno)d "
         "%(message)s"),
     )

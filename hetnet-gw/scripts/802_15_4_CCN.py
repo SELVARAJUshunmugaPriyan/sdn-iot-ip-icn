@@ -123,7 +123,7 @@ if __name__ == "__main__" :
     logging.debug(f"Device status 'ON' : {_cache['sat']}")
 
     # Creation of receive thread
-    Thread(target=receive, args=(_cache['sat'], _cache['drp'], l2_sock, _cache['nod'], lambda : _stopThreads)).start()
+    # Thread(target=receive, args=(_cache['sat'], _cache['drp'], l2_sock, _cache['nod'], lambda : _stopThreads)).start()
     Thread(target=send, args=(_cache['com'], _cache['drp'], _sndBfr, _cache['nod'], l2_sock, lambda : _stopThreads)).start()
     
     try:

@@ -7,10 +7,10 @@ from select     import select
 from queue      import Queue
 from threading  import Thread
 
-AP_IP_ADDRESS_EGRESS_WLAN = '10.0.0.6'
+AP_IP_ADDRESS_EGRESS_WLAN = '10.0.0.2'
 AP_PT_ADDRESS_EGRESS_WLAN = 65432
 WPAN_DEV_ID               = 0
-WLAN_CLIENT_PORT_ADDRESS  = {}
+WLAN_CLIENT_PORT_ADDRESS  = 65433
 
 def ndnPktGetter(nodeID, tempVal):
     try:
@@ -42,11 +42,11 @@ def receiveFromWlan(ip80211Sock, ndn15_4Sock, sndBfr, stop):
             _data, _addr = ip80211Sock.recvfrom(1024)
             sendToWpan(ndn15_4Sock, tuple((_data, _addr)), sndBfr)
             logging.info(f"WLAN: received {_data} from {_addr}")
-            try:
-                if WLAN_CLIENT_PORT_ADDRESS[_addr[0][-1]] :
-                    pass
-            except KeyError :
-                WLAN_CLIENT_PORT_ADDRESS[_addr[0][-1]] = _addr[1]
+            # try:
+            #     if WLAN_CLIENT_PORT_ADDRESS[_addr[0][-1]] :
+            #         pass
+            # except KeyError :
+            #     WLAN_CLIENT_PORT_ADDRESS[_addr[0][-1]] = _addr[1]
         except BlockingIOError:
             pass
         if stop():
@@ -76,7 +76,8 @@ def sendToWlan(ip80211Sock, data):
 def ndnIpProtoTrans(data):                    # NDN Name to IP Address Translation
     data[0] = str(data[0])
     try:
-        return tuple((data[1].to_bytes(1, 'little'), tuple(('10.0.0.' + data[0], WLAN_CLIENT_PORT_ADDRESS[data[0]]))))
+        # return tuple((data[1].to_bytes(1, 'little'), tuple(('10.0.0.' + data[0], WLAN_CLIENT_PORT_ADDRESS[data[0]]))))
+        return tuple((data[1].to_bytes(1, 'little'), tuple(('10.0.0.' + data[0], WLAN_CLIENT_PORT_ADDRESS))))
     except KeyError :
         logging.debug('Unkown receiver address')
     return None
