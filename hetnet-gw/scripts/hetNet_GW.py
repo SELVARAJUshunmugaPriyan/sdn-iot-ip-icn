@@ -1,36 +1,13 @@
 #!/usr/bin/python3
 import socket
 import logging
+from generic_GW_func import emptySocket, ndnPktGetter
+from generic_conf import AP_IP_ADDRESS_EGRESS_WLAN, AP_PT_ADDRESS_EGRESS_WLAN, WPAN_DEV_ID, WLAN_CLIENT_PORT_ADDRESS, GW_QUEUE_SIZE
 from binascii   import unhexlify
 from time       import sleep
 from select     import select
 from queue      import Queue
 from threading  import Thread
-
-AP_IP_ADDRESS_EGRESS_WLAN = '10.0.0.2'
-AP_PT_ADDRESS_EGRESS_WLAN = 65432
-WPAN_DEV_ID               = 0
-WLAN_CLIENT_PORT_ADDRESS  = 65433
-
-def emptySocket(sock, bfrSize):
-    # Remove the data present on the socket
-    while True:
-        _inputReady, o, e = select([sock],[],[], 0.0)
-        if not _inputReady.__len__(): 
-            break
-        try:
-            sock.recv(bfrSize)
-        except BlockingIOError:
-            pass
-    return
-
-def ndnPktGetter(nodeID, tempVal):
-    try:
-        nodeID = int(nodeID).to_bytes(1, 'little')
-        tempVal = int(tempVal).to_bytes(1, 'little') if type(tempVal) != bytes else tempVal
-    except ValueError:
-        pass
-    return b'\x06\x0d\x07\x03\x08\x01' + nodeID + b'\x14\x01' + tempVal + b'\x16\x01\xff'
 
 def receiveFromWpan(ndn15_4Sock, out_q, stop):
     while True :
@@ -38,8 +15,9 @@ def receiveFromWpan(ndn15_4Sock, out_q, stop):
             select([ndn15_4Sock], [], []) # Polling read socket
             try :
                 _rcvPkt = ndn15_4Sock.recvfrom(123)
-                _frame = _rcvPkt[0].decode('unicode-escape')
-                _data = [ ord(_frame[x]) for x in (-7, -4) ]                # data[0] = Sender Name in NDN, data[1] = data
+                _data = []
+                _data.append(_rcvPkt[0][21])
+                _data.append(_rcvPkt[0][24:44])
                 logging.info(f"WPAN: received {_data[1]} from {_data[0]}")
                 out_q.put(_data)
                 emptySocket(ndn15_4Sock, 123)
@@ -101,7 +79,7 @@ def ndnIpProtoTrans(in_q, out_q, stop):                    # NDN Name to IP Addr
                 # tuple((_data[1].to_bytes(1, 'little'),
                 #     tuple(('10.0.0.' + _data[0], WLAN_CLIENT_PORT_ADDRESS[_data[0]]))
                 # ))
-                tuple((_data[1].to_bytes(1, 'little'),
+                tuple((_data[1],
                     tuple(('10.0.0.' + _data[0], WLAN_CLIENT_PORT_ADDRESS))
                 ))
             )
@@ -150,9 +128,9 @@ if __name__ == "__main__" :
 
     # Individual Queue Creation
     wpanEgfrmPtQueue = Queue()
-    wpanEgfrmWlanQueue = Queue(10)
+    wpanEgfrmWlanQueue = Queue(GW_QUEUE_SIZE)
     wlanEgfrmPtQueue = Queue()
-    wlanEgfrmWpanQueue = Queue(10)
+    wlanEgfrmWpanQueue = Queue(GW_QUEUE_SIZE)
 
     # Individual Thread Creation
     # 15.4 -> wlanEgfrmWpanQueue       -> ndnIP pt ->      wlanEgfrmPtQueue -> 802.11

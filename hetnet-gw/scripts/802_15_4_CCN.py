@@ -15,25 +15,8 @@ from binascii import unhexlify
 from select import select
 from random import random
 from threading import Thread
-
-DATA_INTERVAL = 0.001
-
-def emptySocket(sock):
-    # Remove the data present on the socket
-    _input = [sock]
-    while True:
-        _inputReady, o, e = select.select(_input,[],[], 0.0)
-        if not _inputReady.__len__(): 
-            break
-        for _sck in _inputReady:
-            try:
-                _sck.recv(123)
-            except BlockingIOError:
-                pass
-    return
-
-def ndnPktGetter(nodeID, tempVal):
-    return b'\x06\x0d\x07\x03\x08\x01' + int(nodeID).to_bytes(1, 'big') + b'\x14\x01' + int(tempVal).to_bytes(1, 'big') + b'\x16\x01\xff'
+from generic_GW_func import emptySocket, ndnPktGetter
+from generic_conf import DATA_INTERVAL, DATA_PKT_SIZE
 
 def receive(devStat, drpPrcnt, l2_sock, nodeId, stop):
     while devStat :
@@ -45,11 +28,14 @@ def receive(devStat, drpPrcnt, l2_sock, nodeId, stop):
                     break
                 try:
                     _rcvPkt = l2_sock.recvfrom(123)
-                    _frame = _rcvPkt[0].decode('unicode-escape')
-                    _data = [ ord(_frame[x]) for x in (-7, -4) ]
-                    logging.debug('Received for {}. Data: {}'.format(_data[0], _data[1]))
+                    # _frame = _rcvPkt[0].decode('unicode-escape')
+                    # _data = [ ord(_frame[x]) for x in (21, 24, 25, 26, 27, 28) ]
+                    _data = []
+                    _data.append(_rcvPkt[0][21])
+                    _data.append(_rcvPkt[0][24:29])
+                    logging.debug('Received for {}. Data: {}.'.format(_data[0], _data[1]))
                     if _data[0] == int(nodeId) :
-                        logging.info(f"Received: {_data[1].to_bytes(1, 'big')}")
+                        logging.info(f"Received: {_data[1]}")
                 except BlockingIOError:
                     pass
                 except IndexError:
@@ -59,14 +45,19 @@ def receive(devStat, drpPrcnt, l2_sock, nodeId, stop):
             break
     return
 
-def send(commStat, drpPrcnt, sndBfr, nodeID, l2_sock, stop):
+def send(commStat, drpPrcnt, pktSize, sndBfr, nodeID, l2_sock, stop):
     while True :
         if commStat and round(random() * 100) > drpPrcnt: # Generating new content for topic of node ID
-            _cmpltSndBfr = sndBfr + ndnPktGetter(nodeID, tempVal=round(random() * 255))
+            _seqByts = b''
+            for i in range(5):
+                _seqByts += int(random() * 255).to_bytes(1,'little')
+            for i in range(pktSize - 5):
+                _seqByts += b'\x00'
+            _cmpltSndBfr = sndBfr + ndnPktGetter(nodeID, tempVal=_seqByts)
             select([],[l2_sock],[], 0.0)
             _tBytes = l2_sock.send(_cmpltSndBfr)
             logging.debug(f"Total sent bytes {_tBytes}")
-            logging.info(f"Sending random squence: {_cmpltSndBfr[24:25]}")
+            logging.info(f"Sending random squence: {_cmpltSndBfr[24:29]}")
 
         sleep(DATA_INTERVAL)
         if stop():
@@ -123,8 +114,8 @@ if __name__ == "__main__" :
     logging.debug(f"Device status 'ON' : {_cache['sat']}")
 
     # Creation of receive thread
-    # Thread(target=receive, args=(_cache['sat'], _cache['drp'], l2_sock, _cache['nod'], lambda : _stopThreads)).start()
-    Thread(target=send, args=(_cache['com'], _cache['drp'], _sndBfr, _cache['nod'], l2_sock, lambda : _stopThreads)).start()
+    Thread(target=receive, args=(_cache['sat'], _cache['drp'], l2_sock, _cache['nod'], lambda : _stopThreads)).start()
+    Thread(target=send, args=(_cache['com'], _cache['drp'], DATA_PKT_SIZE, _sndBfr, _cache['nod'], l2_sock, lambda : _stopThreads)).start()
     
     try:
         while True :
