@@ -23,7 +23,7 @@ def receive(devStat, drpPrcnt, l2_sock, nodeId, stop):
         _rcvPkt = None
         if round(random() * 100) > drpPrcnt :
             while True:
-                _inputReady, o, e = select([l2_sock],[],[], 0.0)
+                _inputReady, o, e = select([l2_sock],[],[])
                 if not _inputReady.__len__(): 
                     break
                 try:
@@ -54,7 +54,7 @@ def send(commStat, drpPrcnt, pktSize, sndBfr, nodeID, l2_sock, stop):
             for i in range(pktSize - 5):
                 _seqByts += b'\x00'
             _cmpltSndBfr = sndBfr + ndnPktGetter(nodeID, tempVal=_seqByts)
-            select([],[l2_sock],[], 0.0)
+            select([],[l2_sock],[])
             _tBytes = l2_sock.send(_cmpltSndBfr)
             logging.debug(f"Total sent bytes {_tBytes}")
             logging.info(f"Sending random squence: {_cmpltSndBfr[24:29]}")
@@ -112,14 +112,11 @@ if __name__ == "__main__" :
             _sndBfr += _strng                   # Appending Device MAC address
 
     logging.debug(f"Device status 'ON' : {_cache['sat']}")
-
-    # Creation of receive thread
-    Thread(target=receive, args=(_cache['sat'], _cache['drp'], l2_sock, _cache['nod'], lambda : _stopThreads)).start()
-    Thread(target=send, args=(_cache['com'], _cache['drp'], DATA_PKT_SIZE, _sndBfr, _cache['nod'], l2_sock, lambda : _stopThreads)).start()
     
     try:
-        while True :
-            sleep(1)            # Need a proper program shutdown
+        # Creation of receive thread
+        Thread(target=receive, args=(_cache['sat'], _cache['drp'], l2_sock, _cache['nod'], lambda : _stopThreads)).start()
+        Thread(target=send, args=(_cache['com'], _cache['drp'], DATA_PKT_SIZE, _sndBfr, _cache['nod'], l2_sock, lambda : _stopThreads)).start()
     except KeyboardInterrupt:
         l2_sock.close()
         stopThreads = True

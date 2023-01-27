@@ -10,7 +10,7 @@ from generic_conf import SERVER_ADDRESS, DATA_INTERVAL, DATA_PKT_SIZE, CLIENT_UD
 
 def receive(udpSock, stop):
     while True:
-        select([udpSock], [], [], 0.0)
+        select([udpSock], [], [])
         try:
             _dataRecevd = udpSock.recvfrom(1024)
             logging.info(f"Received: {_dataRecevd[0][:5]}")
@@ -22,14 +22,14 @@ def receive(udpSock, stop):
 
 def send(udpSock, pktSize, stop):
     while True :
-        select([], [udpSock], [], 0.0)
+        select([], [udpSock], [])
         _seqByts = b''
         for i in range(5):
             _seqByts += int(random() * 255).to_bytes(1,'little')
         for i in range(pktSize - 5):
             _seqByts += b'\x00'
-        _tBytesSent = udpSock.sendto(_seqByts, SERVER_ADDRESS)
-        logging.debug(f"Total bytes sent: {_tBytesSent}")
+        # _tBytesSent = udpSock.sendto(_seqByts, SERVER_ADDRESS)
+        logging.debug(f"Total bytes sent: {udpSock.sendto(_seqByts, SERVER_ADDRESS)}")
         logging.info(f"Sending random squence: {_seqByts[:5]}")
         
         sleep(DATA_INTERVAL)
@@ -53,12 +53,9 @@ if __name__ == "__main__" :
     udpSock.setblocking(0)
     logging.debug(f"Socket Created")
     
-    Thread(target=receive, args=(udpSock, lambda : _stopThreads)).start()
-    Thread(target=send, args=(udpSock, DATA_PKT_SIZE, lambda : _stopThreads)).start()
-
     try:
-        while True:
-            sleep(1)
+        Thread(target=receive, args=(udpSock, lambda : _stopThreads)).start()
+        Thread(target=send, args=(udpSock, DATA_PKT_SIZE, lambda : _stopThreads)).start()    
     except KeyboardInterrupt:
         udpSock.close()
         _stopThreads = True

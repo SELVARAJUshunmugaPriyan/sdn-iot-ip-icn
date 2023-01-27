@@ -1,8 +1,8 @@
 #!/usr/bin/python3
 import socket
 import logging
+import generic_conf
 from generic_GW_func import emptySocket, ndnPktGetter
-from generic_conf import AP_IP_ADDRESS_EGRESS_WLAN, AP_PT_ADDRESS_EGRESS_WLAN, WPAN_DEV_ID, WLAN_CLIENT_PORT_ADDRESS, GW_QUEUE_SIZE
 from binascii   import unhexlify
 from time       import sleep
 from select     import select
@@ -11,26 +11,30 @@ from threading  import Thread
 
 def receiveFromWpan(ndn15_4Sock, out_q, stop):
     while True :
-        while not out_q.full() :
+        if not out_q.full() :
             select([ndn15_4Sock], [], []) # Polling read socket
+            # logging.debug(f"WPAN_QUEUE: size {out_q.qsize()}")
             try :
                 _rcvPkt = ndn15_4Sock.recvfrom(123)
                 _data = []
                 _data.append(_rcvPkt[0][21])
-                _data.append(_rcvPkt[0][24:44])
+                _data.append(_rcvPkt[0][24:24 + generic_conf.DATA_PKT_SIZE])
                 logging.info(f"WPAN: received {_data[1]} from {_data[0]}")
                 out_q.put(_data)
                 emptySocket(ndn15_4Sock, 123)
             except BlockingIOError:
                 pass
+        else :
+            emptySocket(ndn15_4Sock, 123)
         if stop():
             break
     return
 
 def receiveFromWlan(ip80211Sock, out_q, stop):
     while True :
-        while not out_q.full() :
+        if not out_q.full() :
             select([ip80211Sock], [], []) # Polling read socket
+            # logging.debug(f"WLAN_QUEUE: size {out_q.qsize()}")
             try:
                 _data, _addr = ip80211Sock.recvfrom(1024)
                 out_q.put(tuple((_data, _addr)))
@@ -43,6 +47,8 @@ def receiveFromWlan(ip80211Sock, out_q, stop):
                 emptySocket(ip80211Sock, 1024)
             except BlockingIOError:
                 pass
+        else :
+            emptySocket(ip80211Sock, 1024)
         if stop():
             break
     return
@@ -80,7 +86,7 @@ def ndnIpProtoTrans(in_q, out_q, stop):                    # NDN Name to IP Addr
                 #     tuple(('10.0.0.' + _data[0], WLAN_CLIENT_PORT_ADDRESS[_data[0]]))
                 # ))
                 tuple((_data[1],
-                    tuple(('10.0.0.' + _data[0], WLAN_CLIENT_PORT_ADDRESS))
+                    tuple(('10.0.0.' + _data[0], generic_conf.WLAN_CLIENT_PORT_ADDRESS))
                 ))
             )
         except KeyError :
@@ -106,7 +112,7 @@ if __name__ == "__main__" :
     logging.basicConfig(
         filename='/home/priyan/code/githubRepoOffline/sdn-iot-ip-icn/hetnet-gw/logs/HetNet_GW/HetNet_GW.log',
         filemode='a',
-        level=logging.DEBUG,
+        level=logging.CRITICAL,
         format=("%(asctime)s-%(levelname)s-%(filename)s-%(lineno)d "
         "%(message)s"),
     )
@@ -118,19 +124,19 @@ if __name__ == "__main__" :
 
     # IEEE 802.11   - IP Socket Creation
     ip80211Sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    ip80211Sock.bind((AP_IP_ADDRESS_EGRESS_WLAN, AP_PT_ADDRESS_EGRESS_WLAN))
+    ip80211Sock.bind((generic_conf.AP_IP_ADDRESS_EGRESS_WLAN, generic_conf.AP_PT_ADDRESS_EGRESS_WLAN))
     ip80211Sock.setblocking(0)
 
-    with open(f"/sys/class/net/wpan{WPAN_DEV_ID}/address", 'r') as f :
+    with open(f"/sys/class/net/wpan{generic_conf.WPAN_DEV_ID}/address", 'r') as f :
             _strng = f.readline()
             _strng = b''.join(unhexlify(x) for x in _strng[:-1].split(':'))
             _sndBfrTwdNdn15_4 += _strng                   # Appending Device MAC address
 
     # Individual Queue Creation
     wpanEgfrmPtQueue = Queue()
-    wpanEgfrmWlanQueue = Queue(GW_QUEUE_SIZE)
+    wpanEgfrmWlanQueue = Queue(generic_conf.GW_QUEUE_SIZE)
     wlanEgfrmPtQueue = Queue()
-    wlanEgfrmWpanQueue = Queue(GW_QUEUE_SIZE)
+    wlanEgfrmWpanQueue = Queue(generic_conf.GW_QUEUE_SIZE)
 
     # Individual Thread Creation
     # 15.4 -> wlanEgfrmWpanQueue       -> ndnIP pt ->      wlanEgfrmPtQueue -> 802.11
@@ -152,13 +158,11 @@ if __name__ == "__main__" :
     _thread_IPNdn_Translat = Thread(target=ipNdnProtoTrans, args=(wpanEgfrmWlanQueue, wpanEgfrmPtQueue, lambda : _stopThreads, ))
     _openedThreads.append(_thread_IPNdn_Translat)
     
-    # Thread operations
-    for i in _openedThreads :
-        i.start()
 
     try:
-        while True :
-            sleep(1)            # Need a proper program shutdown
+        # Thread operations
+        for i in _openedThreads :
+            i.start()
     except KeyboardInterrupt:
         ndn15_4Sock.close()
         ip80211Sock.close()
