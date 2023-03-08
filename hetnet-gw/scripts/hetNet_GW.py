@@ -112,7 +112,7 @@ if __name__ == "__main__" :
     logging.basicConfig(
         filename='/home/priyan/code/githubRepoOffline/sdn-iot-ip-icn/hetnet-gw/logs/HetNet_GW/HetNet_GW.log',
         filemode='a',
-        level=logging.CRITICAL,
+        level=logging.DEBUG,
         format=("%(asctime)s-%(levelname)s-%(filename)s-%(lineno)d "
         "%(message)s"),
     )
