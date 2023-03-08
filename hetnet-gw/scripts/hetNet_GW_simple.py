@@ -62,14 +62,14 @@ def sendToWlan(ip80211Sock, data):
         logging.debug(f"Unkown client")
     return
 
+def ndnIpProtoEncap(data):                    # NDN Name to IP Address Translation
+    return tuple((data, tuple(('10.0.0.' + str(data[0]), generic_conf.WLAN_CLIENT_PORT_ADDRESS))))
+
+def ipNdnProtoEncap(data):                    # IP Address to NDN Name Translation
+    return tuple((int(data[1][0][-1]), data))
+    
 def ndnIpProtoTrans(data):                    # NDN Name to IP Address Translation
-    data[0] = str(data[0])
-    try:
-        # return tuple((data[1].to_bytes(1, 'little'), tuple(('10.0.0.' + data[0], WLAN_CLIENT_PORT_ADDRESS[data[0]]))))
-        return tuple((data[1], tuple(('10.0.0.' + data[0], generic_conf.WLAN_CLIENT_PORT_ADDRESS))))
-    except KeyError :
-        logging.debug('Unkown receiver address')
-    return None
+    return tuple((data[1], tuple(('10.0.0.' + str(data[0]), generic_conf.WLAN_CLIENT_PORT_ADDRESS))))
 
 def ipNdnProtoTrans(data):                    # IP Address to NDN Name Translation
     return tuple((int(data[1][0][-1]), data[0]))

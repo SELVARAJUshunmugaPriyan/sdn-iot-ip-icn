@@ -1,8 +1,0 @@
-GW
-NDN - IP    1ms     10        7.337     24.936
-IP  - NDN   1ms     10        7.549     45.607
-
-
-GW-Simple
-NDN - IP    1ms     --      227.569     42.061
-IP  - NDN   1ms     --      166.348     51.777
